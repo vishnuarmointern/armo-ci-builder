@@ -59,6 +59,13 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .metal-line{margin-top:14px}
 .metal-line select{width:100%;padding:9px 11px;border:1px solid var(--steel);border-radius:4px;background:var(--surface);color:var(--ink);font:inherit}
 .metal-line select:focus{outline:3px solid color-mix(in srgb,var(--signal) 40%,transparent);outline-offset:1px;border-color:var(--signal)}
+.metal-line.added{border:1px solid var(--line);border-radius:5px;padding:10px 12px 4px;background:color-mix(in srgb,var(--paper) 50%,var(--surface))}
+.line-head{display:flex;justify-content:space-between;align-items:baseline;font-weight:600;font-size:.9rem}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.fld label{margin-top:8px}
+button.secondary{margin-top:14px;background:transparent;color:var(--ink);border:1.5px dashed var(--steel);font-weight:600}
+button.secondary:hover{border-color:var(--signal);color:var(--signal)}
+button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;font-size:.85rem;font-weight:600;text-decoration:underline}
 .metal-title{font-size:.88rem;font-weight:600;margin:16px 0 0}
 .gdocs{font-size:.86rem;color:var(--muted);margin-top:14px;line-height:1.45}
 /* invoice preview: a sheet of paper, always light, Arial like the real document */
@@ -86,7 +93,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-20a · <span id="pc"></span></p>
+      <p class="ver" id="ver">Version 2026-10-20c · <span id="pc"></span></p>
     </div>
   </header>
 
@@ -134,9 +141,9 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=2026-10-20a"></script>
-<script src="assets.js?v=2026-10-20a"></script>
-<script src="ci-core.js?v=2026-10-20a"></script>
+<script src="config.js?v=2026-10-20c"></script>
+<script src="assets.js?v=2026-10-20c"></script>
+<script src="ci-core.js?v=2026-10-20c"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
 (function(){
@@ -179,24 +186,57 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
     }
   }
 
-  // one dropdown per invoice line: which saved metal content goes on page 2
+  // one block per invoice line: FedEx lines get a metal-content dropdown, added lines get product fields
   function renderMetal() {
     const keys = Object.keys(CONFIG.parts).sort();
-    let out = '<p class="metal-title">Metal content for page 2</p>';
+    const short = k => CONFIG.parts[k].title.replace(/ \(.*$/, '');
+    let out = '<p class="metal-title">Products and metal content for page 2</p>';
     parsed.items.forEach((it, i) => {
-      const id = 'metal' + i;
-      const hint = it.metal_key ? (it.metal_how ? `Matched by ${it.metal_how}.` : 'Chosen by hand.') : 'No match found. Choose the product.';
-      out += `<div class="metal-line"><label for="${id}">Line ${i + 1}: ${escapeHtml(it.part)} \u2014 ${escapeHtml(it.desc)}</label>` +
-        `<select id="${id}" data-i="${i}"><option value="">None (add later)</option>` +
-        keys.map(k => `<option value="${escapeHtml(k)}"${k === it.metal_key ? ' selected' : ''}>${escapeHtml(k)} \u2014 ${escapeHtml(CONFIG.parts[k].title.replace(/ \(.*$/, ''))}</option>`).join('') +
-        `</select><p class="hint">${hint}</p></div>`;
+      if (!it.added) {
+        const id = 'metal' + i;
+        const hint = it.metal_key ? (it.metal_how ? `Matched by ${it.metal_how}.` : 'Chosen by hand.') : (it.metal_manual ? 'Set to none.' : 'No match found. Choose the product.');
+        out += `<div class="metal-line"><label for="${id}">Line ${i + 1}: ${escapeHtml(it.part)} \u2014 ${escapeHtml(it.desc)}</label>` +
+          `<select id="${id}" data-i="${i}" data-kind="metal"><option value="">None (add later)</option>` +
+          keys.map(k => `<option value="${escapeHtml(k)}"${k === it.metal_key ? ' selected' : ''}>${escapeHtml(k)} \u2014 ${escapeHtml(short(k))}</option>`).join('') +
+          `</select><p class="hint">${hint}</p></div>`;
+        return;
+      }
+      const f = (name, label, val, extra = '') => `<div class="fld"><label for="${name}${i}">${label}</label><input type="text" id="${name}${i}" data-i="${i}" data-f="${name}" value="${escapeHtml(val)}" ${extra}></div>`;
+      out += `<div class="metal-line added"><div class="line-head"><span>Line ${i + 1} (added)</span><button type="button" class="linkbtn" data-rm="${i}" aria-label="Remove line ${i + 1}">Remove</button></div>` +
+        `<label for="pick${i}">Product</label><select id="pick${i}" data-i="${i}" data-kind="pick"><option value="">Other product (no saved metal content)</option>` +
+        keys.map(k => `<option value="${escapeHtml(k)}"${k === it.metal_key ? ' selected' : ''}>${escapeHtml(k)} \u2014 ${escapeHtml(short(k))}</option>`).join('') + '</select>' +
+        '<div class="fields">' + f('part', 'Part Nbr', it.part) + f('qty_in', 'Qty', it.qty_in != null ? it.qty_in : (+it.qty).toString(), 'inputmode="decimal"') +
+        f('unit', 'Unit value (US$)', it.unit, 'inputmode="decimal"') + f('hs', 'HS Code', it.hs) + '</div>' +
+        f('desc', 'Description', it.desc) +
+        `<p class="hint" id="cv${i}">Commodity value: US$${it.commodity_value}${it.metal_key ? '' : ' \u00b7 page 2 will say \u201cMETAL CONTENT TO BE ADDED\u201d'}</p></div>`;
     });
+    out += '<button type="button" class="secondary" id="addLine">+ Add another product</button>';
     $('metal').innerHTML = out;
+    const refresh = () => { render(); showWarnings(); };
     $('metal').querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => {
-      const it = parsed.items[+sel.dataset.i]; it.metal_key = sel.value; it.metal_how = '';
-      renderMetal(); render(); showWarnings();
+      const i = +sel.dataset.i, it = parsed.items[i];
+      if (sel.dataset.kind === 'pick') {
+        parsed.items[i] = sel.value ? ArmodiloCI.newLine(CONFIG, sel.value) : Object.assign(it, { metal_key: '', metal_how: '' });
+        if (!sel.value) ArmodiloCI.fillLine(parsed.items[i]);
+      } else { it.metal_key = sel.value; it.metal_how = ''; it.metal_manual = true; }
+      renderMetal(); refresh();
       const again = document.getElementById(sel.id); if (again) again.focus();
     }));
+    $('metal').querySelectorAll('input[data-f]').forEach(inp => inp.addEventListener('input', () => {
+      const i = +inp.dataset.i, it = parsed.items[i];
+      it[inp.dataset.f] = inp.value.trim();
+      ArmodiloCI.fillLine(it);
+      $('cv' + i).textContent = `Commodity value: US$${it.commodity_value}` + (it.metal_key ? '' : ' \u00b7 page 2 will say \u201cMETAL CONTENT TO BE ADDED\u201d');
+      refresh();
+    }));
+    $('metal').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
+      parsed.items.splice(+b.dataset.rm, 1); renderMetal(); refresh(); $('addLine').focus();
+    }));
+    $('addLine').addEventListener('click', () => {
+      parsed.items.push(ArmodiloCI.fillLine({ added: true, part: '', marks: '', mfr: 'CA', net_wgt: '0.00', wgt_unit: 'lbs', hs: '', qty: '1', uom: 'EA', unit: '', desc: '', metal_key: '' }));
+      renderMetal(); refresh();
+      document.getElementById('pick' + (parsed.items.length - 1)).focus();
+    });
   }
 
   function showWarnings() {
@@ -210,14 +250,14 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
 
   // HTML preview that mirrors the document layout (positions in points)
   function render() {
-    const d = parsed, L = 14.4, cn = d.consignee, im = d.importer, email = $('email').value.trim();
+    const d = ArmodiloCI.withTotals(parsed), L = 14.4, cn = d.consignee, im = d.importer, email = $('email').value.trim();
     const row = segs => '<div class="r">' + segs.map(([x, t, a]) => a === 'right'
       ? `<span style="right:${597.6 - x}px">${escapeHtml(t)}</span>`
       : `<span style="left:${x - L}px">${escapeHtml(t)}</span>`).join('') + '</div>';
     const h = [];
     h.push(`<img class="logo" alt="" src="data:image/png;base64,${LOGO_B64}">`);
     h.push(`<div class="c h12">ACI-${escapeHtml($('aci').value.trim())}</div><div class="c h12">Commercial Invoice</div>`);
-    h.push('<div class="c h11 red">Please see Page 2 for Steel/Aluminum Content Breakdown</div>');
+    h.push(`<div class="c h11 red">Please see Page ${ArmodiloCI.metalPage(d)} for Steel/Aluminum Content Breakdown</div>`);
     h.push(row([[L,'Invoice Number'],[95.5,'Purpose of Shipment'],[302.7,'Curr'],[355.5,'Ult Dest.']]));
     h.push(row([[122.4,d.purpose],[300.7,d.currency],[355.1,d.ult_dest]]));
     h.push(row([[L,'Export Dt'],[81.1,'C.I. References'],[275.5,'Pkgs'],[333.8,'Bill T/C']]));
@@ -244,7 +284,8 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
     h.push(row([[L,'Tracking Numbers:'],[108,d.tracking.join(', ')]]), '<div class="r"></div>');
     h.push(row([[L,'I declare all information in this invoice to be true and correct.']]));
     h.push(`<div style="position:relative;display:flex;align-items:flex-end;height:34px;white-space:nowrap">Signature of shipper:&nbsp;<img alt="Signature" src="data:image/png;base64,${SIG_B64}" style="width:54px;height:30px;margin-bottom:-4px">&nbsp;SHIPPING@ARMODILO.COM<span style="position:absolute;bottom:0;left:${348-L}px">${escapeHtml(d.sig_date)}</span></div>`);
-    h.push('<div class="r"></div><hr style="border-top-style:solid"><div class="r"></div>', row([[L,'Page 1 of 2']]));
+    if (d.items.length > 1) h.push('<div class="r"></div>', row([[L,'(Page numbers are in the footer when there is more than one line.)']]));
+    else h.push('<div class="r"></div><hr style="border-top-style:solid"><div class="r"></div>', row([[L,'Page 1 of 2']]));
     // page 2: metal content
     const h2 = ['<div class="c h12 red">Metal Content</div><div class="r"></div>'];
     const blue = t => `<span style="color:#00f">${escapeHtml(t)}</span>`;
@@ -263,7 +304,7 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
         h2.push('<div class="r"></div>');
       });
     });
-    h2.push(row([[L, 'Page 2 of 2']]));
+    if (d.items.length === 1) h2.push(row([[L, 'Page 2 of 2']]));
     $('stage').innerHTML = '<div class="sheet">' + h.join('') + '</div><div class="sheet" style="margin-top:20px">' + h2.join('') + '</div>';
     $('previewLabel').textContent = 'Preview of both pages.';
   }

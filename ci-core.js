@@ -111,7 +111,8 @@
   // ---------- matching a FedEx line to saved metal content ----------
   // norm: capitals, letters and digits only ("ALUR - 14" -> "ALUR14")
   const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const family = s => (norm(s).match(/^[A-Z]+/) || [''])[0];      // leading letters: "ALUR14" -> "ALUR"
+  // product family = first word's leading letters: "ALUR14", "ALUR - 14", "ALUR TABLET KIOSK 14" -> "ALUR"
+  const family = s => (String(s || '').toUpperCase().trim().match(/^[A-Z]+/) || [''])[0];
   const sizeOf = s => { const m = norm(s).match(/^[A-Z]+(\d+)$/); return m ? String(+m[1]) : null; };
   // sizes written in text: 14, 14", 14”, 14-inch, "Kiosk 14"
   const sizesIn = t => [...String(t || '').matchAll(/(?:^|[^\d.])(\d{2})(?=\s*(?:["\u201d\u2033]|in\b|inch|-?inch|\b))/gi)].map(m => String(+m[1]));
@@ -125,7 +126,14 @@
     if (exact) return { key: exact, how: 'part number' };
     const fam = family(part);
     const sameFamily = fam ? keys.filter(k => family(k) === fam) : [];
-    if (sameFamily.length === 1 && !sizeOf(sameFamily[0])) return { key: sameFamily[0], how: 'part number' };
+    // one saved product with no sizes: only automatic when nothing else is added ("KBT02" -> "KBT-02"),
+    // so a different product like "TILT BASE" is never mistaken for "TILT"
+    if (sameFamily.length === 1 && !sizeOf(sameFamily[0])) {
+      const np = norm(part), nk = norm(sameFamily[0]);
+      const onlyDigitsDiffer = (np.startsWith(nk) && /^\d*$/.test(np.slice(nk.length))) || (nk.startsWith(np) && /^\d+$/.test(nk.slice(np.length)));
+      if (onlyDigitsDiffer) return { key: sameFamily[0], how: 'part number' };
+      return { key: null, options: sameFamily, reason: `not sure this is ${sameFamily[0]}` };
+    }
     if (sameFamily.length) {
       const sized = sameFamily.filter(k => sizeOf(k));
       const wanted = [...new Set([sizeOf(part), ...sizesIn(part), ...sizesIn(desc)].filter(Boolean))];
@@ -162,6 +170,33 @@
     c.origin.forEach(([a, b]) => rows.push(`${a}: ${b}`));
     rows.push(`Reference: ${c.reference}`);
     return rows;
+  }
+
+
+  // ---------- lines added by hand ----------
+  const money = n => (Math.round(n * 100) / 100).toFixed(2);
+  const num = s => parseFloat(String(s || '').replace(/,/g, '')) || 0;
+  // a new invoice line, prefilled from a saved product's defaults
+  function newLine(cfg, key) {
+    const it = (cfg.parts[key] || {}).item || {};
+    const line = { added: true, part: it.part || key || '', marks: '', mfr: 'CA', net_wgt: '0.00', wgt_unit: 'lbs',
+      hs: it.hs || '', qty: '1.00', uom: 'EA', unit: it.unit_value != null ? String(it.unit_value) : '',
+      desc: it.desc || '', metal_key: key || '', metal_how: key ? 'the product you picked' : '' };
+    return fillLine(line);
+  }
+  // recompute the formatted fields of an added line from qty and unit value
+  function fillLine(l) {
+    l.qty = num(l.qty_in != null ? l.qty_in : l.qty).toFixed(2);
+    l.unit_value = num(l.unit).toFixed(6);
+    l.commodity_value = money(num(l.qty) * num(l.unit));
+    return l;
+  }
+  // copy of the invoice with totals that include any added lines
+  function withTotals(d) {
+    if (!d.items.some(it => it.added)) return d;
+    const commodity = d.items.reduce((t, it) => t + num(it.commodity_value), 0);
+    const total = commodity + num(d.freight) + num(d.insurance) + num(d.others);
+    return Object.assign({}, d, { total_commodity: money(commodity), total_invoice: money(total) });
   }
 
   // ---------- docx ----------
@@ -206,10 +241,17 @@
     return `<w:p>${ppr ? `<w:pPr>${ppr}</w:pPr>` : ''}${body}</w:p>`;
   }
 
+  // which page the metal content starts on. With several lines (page numbers in the footer, no closing rule)
+  // page 1 is ~682pt plus ~78pt per extra line, and a page holds ~800pt. Metal content starts on a fresh page.
+  function metalPage(d) {
+    if (d.items.length <= 1) return 2;
+    return Math.ceil((682 + 78 * (d.items.length - 1)) / 800) + 1;
+  }
   function buildBody(d, cfg, aci, email) {
     picId = 1;
     const RED = 'FF0000', BLUE = '0000FF';
     const P = [];
+    const multi = d.items.length > 1;   // more than one line: page 1 may run onto more pages
     const blank = () => P.push(para());
     const hr = (k = 'dashed') => { P.push(para([], { rule: k, line: 7 })); P.push(para([], { line: 6.5 })); };
     const cn = d.consignee, im = d.importer;
@@ -217,7 +259,7 @@
     P.push(para([], { center: '', auto: true, raw: pic('rLogo', 161, 36.7, 'Armodilo logo') }));
     P.push(para([], { center: `ACI-${aci}`, b: true, sz: 12, line: 16.8 }));
     P.push(para([], { center: 'Commercial Invoice', b: true, sz: 12, line: 16.8 }));
-    P.push(para([], { center: 'Please see Page 2 for Steel/Aluminum Content Breakdown', b: true, sz: 11, color: RED, line: 15.4 }));
+    P.push(para([], { center: `Please see Page ${metalPage(d)} for Steel/Aluminum Content Breakdown`, b: true, sz: 11, color: RED, line: 15.4 }));
     P.push(para([[L, 'Invoice Number'], [95.5, 'Purpose of Shipment'], [302.7, 'Curr'], [355.5, 'Ult Dest.']]));
     P.push(para([[122.4, d.purpose], [300.7, d.currency], [355.1, d.ult_dest]]));
     P.push(para([[L, 'Export Dt'], [81.1, 'C.I. References'], [275.5, 'Pkgs'], [333.8, 'Bill T/C']]));
@@ -264,8 +306,7 @@
       auto: true, tabs: [`<w:tab w:val="left" w:pos="${tw(348 - L)}"/>`],
       raw: run('Signature of shipper: ') + pic('rSig', SIG.w, SIG.h, 'Signature') + run(' SHIPPING@ARMODILO.COM') + TAB + run(d.sig_date)
     }));
-    blank(); hr('single'); blank();
-    P.push(para([[L, 'Page 1 of 2']]));
+    if (!multi) { blank(); hr('single'); blank(); P.push(para([[L, 'Page 1 of 2']])); }   // with several lines, page numbers go in the footer
 
     // page 2
     P.push(para([], { center: 'Metal Content', b: true, sz: 12, color: RED, line: 16.8, pageBreak: true }));
@@ -285,7 +326,7 @@
         blank();
       }
     });
-    P.push(para([[L, 'Page 2 of 2']]));
+    if (!multi) P.push(para([[L, 'Page 2 of 2']]));
     return P.join('');
   }
 
@@ -293,7 +334,9 @@
     const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
     const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
       `<w:document xmlns:w="${W}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">` +
-      `<w:body>${buildBody(d, cfg, aci, email)}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="320" w:right="288" w:bottom="400" w:left="288" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+      `<w:body>${buildBody(withTotals(d), cfg, aci, email)}<w:sectPr>${d.items.length > 1 ? '<w:footerReference w:type="default" r:id="rFoot"/>' : ''}<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="320" w:right="288" w:bottom="400" w:left="288" w:header="0" w:footer="200" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+    const fld = code => `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
+    const footer = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="${W}"><w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr>${run('Page ')}${fld('PAGE')}${run(' of ')}${fld('NUMPAGES')}</w:p></w:ftr>`;
     const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr>` +
       `<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:rPrDefault>` +
       `<w:pPrDefault><w:pPr><w:spacing w:before="0" w:after="0" w:line="270" w:lineRule="exact"/></w:pPr></w:pPrDefault></w:docDefaults>` +
@@ -302,15 +345,18 @@
     z.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
       `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>` +
       `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
-      `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`);
+      `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
+      (d.items.length > 1 ? `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>` : '') + `</Types>`);
     z.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
       `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
     z.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
       `<Relationship Id="rStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
       `<Relationship Id="rLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.png"/>` +
-      `<Relationship Id="rSig" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/signature.png"/></Relationships>`);
+      `<Relationship Id="rSig" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/signature.png"/>` +
+      `<Relationship Id="rFoot" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>`);
     z.file('word/document.xml', doc);
     z.file('word/styles.xml', styles);
+    if (d.items.length > 1) z.file('word/footer1.xml', footer);
     z.file('word/media/logo.png', logoB64, { base64: true });
     z.file('word/media/signature.png', sigB64, { base64: true });
     return z.generateAsync({ type: typeof window === 'undefined' ? 'nodebuffer' : 'blob', compression: 'DEFLATE',
@@ -323,12 +369,14 @@
     d.items.forEach((it, i) => {
       if (partFor(cfg, it)) return;
       const m = matchPart(cfg, it.part, it.desc);
-      w.push(`Line ${i + 1} (${it.part}): ${it.metal_key === '' ? 'set to no metal content' : m.reason}. Choose it under \u201cMetal content for page 2\u201d, or page 2 will say “METAL CONTENT TO BE ADDED”.`);
+      w.push(`Line ${i + 1} (${it.part}): ${it.metal_manual ? 'set to no metal content' : m.reason}. Choose it under \u201cProducts and metal content\u201d, or page 2 will say “METAL CONTENT TO BE ADDED”.`);
     });
-    d.items.forEach(it => { if (parseFloat(it.net_wgt) === 0) w.push(`Part ${it.part} shows a net weight of 0.00 ${it.wgt_unit} on the FedEx invoice.`); });
+    if (d.items.some(it => it.added)) w.push(`Totals now include the added product${d.items.filter(it => it.added).length > 1 ? 's' : ''} (Total Commodity US$${withTotals(d).total_commodity}). Total Shipment Weight is still FedEx\u2019s ${d.total_weight} lbs, so check it covers everything.`);
+    d.items.forEach(it => { if (it.added && (!it.part || !(num(it.unit) > 0))) w.push(`An added line is missing its part number or unit value.`); });
+    d.items.forEach(it => { if (!it.added && parseFloat(it.net_wgt) === 0) w.push(`Part ${it.part} shows a net weight of 0.00 ${it.wgt_unit} on the FedEx invoice.`); });
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, newLine, fillLine, withTotals, metalPage };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -15,7 +15,9 @@
        weight_label     defaults to "Total Weight" (steel uses "Total Component Weight")
        weight_suffix    optional text after "kg" (only shown when quantity is 1)
        origin           list of [label, country] lines
-       reference        file name shown after "Reference:" */
+       reference        file name shown after "Reference:"
+     item        - defaults used when you add this product as an extra line
+                   (part number, HS code, unit value in US$, description) */
 window.CONFIG = {
   "shipper": {
     "lines": [
@@ -95,7 +97,13 @@ window.CONFIG = {
           "reference": "Dana.pdf, CBM.pdf",
           "weight_suffix": "17.99 lbs 35%"
         }
-      ]
+      ],
+      "item": {
+        "part": "ALUR - 14",
+        "hs": "9403.20.0050",
+        "unit_value": 899.99,
+        "desc": "ALUR Tablet Kiosk 14"
+      }
     },
     "ALUR-16": {
       "title": "ALUR Tablet Kiosk 16” (*Please see attached diagram ALUR-16-ASSY-01-REV1)",
@@ -154,7 +162,13 @@ window.CONFIG = {
           ],
           "reference": "Dana.pdf, CBM.pdf"
         }
-      ]
+      ],
+      "item": {
+        "part": "ALUR - 16",
+        "hs": "9403.20.0050",
+        "unit_value": 999.99,
+        "desc": "ALUR Tablet Kiosk 16"
+      }
     },
     "CURVE": {
       "title": "CURVE Desktop Tablet Display Stand (*Please see attached diagram Armodilo_Curve.pdf)",
@@ -201,7 +215,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "CURVE",
+        "hs": "9403.20.90",
+        "unit_value": 249.99,
+        "desc": "Curve - Desktop Tablet Display Stand"
+      }
     },
     "FPC": {
       "title": "FPC Faceplate Cover",
@@ -223,7 +243,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "FPC",
+        "hs": "9403.20.0050",
+        "unit_value": 100.0,
+        "desc": "Faceplate Cover"
+      }
     },
     "FLOOR": {
       "title": "FLOOR Freestanding Tablet Display Stand (*Please see attached diagram Armodilo_Floor.pdf)",
@@ -294,7 +320,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "FLOOR",
+        "hs": "9403.20.90",
+        "unit_value": 449.99,
+        "desc": "Freestanding Tablet Display Stand"
+      }
     },
     "KBT-02": {
       "title": "KBT-02 Keyboard Tray",
@@ -322,7 +354,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "KBT-02",
+        "hs": "9403.20.0050",
+        "unit_value": 49.99,
+        "desc": "Keyboard Tray"
+      }
     },
     "KEYO": {
       "title": "KEYO Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Keyo.pdf)",
@@ -369,7 +407,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "KEYO",
+        "hs": "9403.20.0050",
+        "unit_value": 224.99,
+        "desc": "Wall Mounted Tablet Display Stand"
+      }
     },
     "REVOLVE": {
       "title": "REVOLVE Revolve Pivot Add-on",
@@ -414,7 +458,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "REVOLVE",
+        "hs": "9403.70.8020",
+        "unit_value": 99.0,
+        "desc": "Revolve Pivot Add-on"
+      }
     },
     "SPHERE": {
       "title": "SPHERE Desktop Tablet Display Stand (*Please see attached diagram Armodilo_Sphere.pdf)",
@@ -455,7 +505,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "SPHERE",
+        "hs": "9403.20.0050",
+        "unit_value": 256.75,
+        "desc": "Desktop Tablet Display Stand"
+      }
     },
     "SURFACE": {
       "title": "SURFACE Mount Tablet Display Stand (*Please see attached diagram Armodilo_Surface.pdf)",
@@ -502,7 +558,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "SURFACE",
+        "hs": "9403.20.0050",
+        "unit_value": 294.99,
+        "desc": "Surface Mount Tablet Display Stand"
+      }
     },
     "TILT": {
       "title": "TILT Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Tilt.pdf)",
@@ -549,7 +611,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "TILT",
+        "hs": "9403.20.0050",
+        "unit_value": 224.99,
+        "desc": "Wall Mount Tablet Display Stand"
+      }
     },
     "WALL": {
       "title": "WALL Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Wall.pdf)",
@@ -596,7 +664,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "WALL",
+        "hs": "9403.20.0050",
+        "unit_value": 249.0,
+        "desc": "Wall Mount Tablet Display Stand"
+      }
     },
     "VESA ADAPTER": {
       "title": "VESA Adapter Vesa Adapter for 75 and 100",
@@ -617,7 +691,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "VESA ADAPTER",
+        "hs": "9403.20.0050",
+        "unit_value": 29.0,
+        "desc": "Vesa Adapter for 75 and 100"
+      }
     },
     "VESA": {
       "title": "VESA Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Vesa.pdf)",
@@ -640,7 +720,13 @@ window.CONFIG = {
           "hs": "9403.20.0050",
           "qty": 1
         }
-      ]
+      ],
+      "item": {
+        "part": "VESA",
+        "hs": "9403.20.0050",
+        "unit_value": 100.0,
+        "desc": "Wall Mounted Tablet Display Stand"
+      }
     }
   }
 };
