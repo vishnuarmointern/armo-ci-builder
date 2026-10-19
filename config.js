@@ -598,7 +598,7 @@ window.CONFIG = {
         }
       ]
     },
-    "VESAADAPTER": {
+    "VESA ADAPTER": {
       "title": "VESA Adapter Vesa Adapter for 75 and 100",
       "components": [
         {

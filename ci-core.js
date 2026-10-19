@@ -86,7 +86,7 @@
       const b = ls.slice(s, e).map(x => x.text).join(' ');
       const g = (re, def = '') => { const m = b.match(re); return m ? m[1].trim() : def; };
       d.items.push({
-        part: g(/Part Nbr:\s*(\S+)/), marks: g(/Marks\/Nbrs:\s*(.*?)\s*C\/T/), mfr: g(/C\/T MFR:\s*(\S+)/),
+        part: g(/Part Nbr:\s*(.*?)\s*Marks\/Nbrs:/) || g(/Part Nbr:\s*(\S+)/), marks: g(/Marks\/Nbrs:\s*(.*?)\s*C\/T/), mfr: g(/C\/T MFR:\s*(\S+)/),
         net_wgt: g(/Net\s+Wgt:\s*([\d.]+)/), wgt_unit: g(/Net\s+Wgt:\s*[\d.]+\s*(\w+)/, 'lbs'),
         hs: g(/HS Code:\s*(\S+)/), qty: g(/Unit Qty:\s*([\d.]+)/), uom: g(/Unit Qty:\s*[\d.]+\s*(\w+)/, 'EA'),
         commodity_value: g(/Commodity Value:\s*([\d.,]+)/), unit_value: g(/(?<![\d.])(\d+\.\d{6})(?![\d.])/),
@@ -108,13 +108,44 @@
   }
 
 
-  // part lookup ignores case and spaces ("ALUR - 14" matches "ALUR-14")
-  const partKey = s => String(s).toUpperCase().replace(/\s+/g, '');
-  function findPart(cfg, part) {
-    const k = partKey(part);
-    const hit = Object.keys(cfg.parts).find(x => partKey(x) === k);
-    return hit ? cfg.parts[hit] : null;
+  // ---------- matching a FedEx line to saved metal content ----------
+  // norm: capitals, letters and digits only ("ALUR - 14" -> "ALUR14")
+  const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const family = s => (norm(s).match(/^[A-Z]+/) || [''])[0];      // leading letters: "ALUR14" -> "ALUR"
+  const sizeOf = s => { const m = norm(s).match(/^[A-Z]+(\d+)$/); return m ? String(+m[1]) : null; };
+  // sizes written in text: 14, 14", 14”, 14-inch, "Kiosk 14"
+  const sizesIn = t => [...String(t || '').matchAll(/(?:^|[^\d.])(\d{2})(?=\s*(?:["\u201d\u2033]|in\b|inch|-?inch|\b))/gi)].map(m => String(+m[1]));
+
+  /* Returns { key, how } for a confident match, or { key: null, options: [...], reason } when the
+     user has to choose. Order: exact part number -> same product family, picked by size -> none. */
+  function matchPart(cfg, part, desc) {
+    const keys = Object.keys(cfg.parts || {});
+    const n = norm(part);
+    const exact = keys.find(k => norm(k) === n);
+    if (exact) return { key: exact, how: 'part number' };
+    const fam = family(part);
+    const sameFamily = fam ? keys.filter(k => family(k) === fam) : [];
+    if (sameFamily.length === 1 && !sizeOf(sameFamily[0])) return { key: sameFamily[0], how: 'part number' };
+    if (sameFamily.length) {
+      const sized = sameFamily.filter(k => sizeOf(k));
+      const wanted = [...new Set([sizeOf(part), ...sizesIn(part), ...sizesIn(desc)].filter(Boolean))];
+      const hits = sized.filter(k => wanted.includes(sizeOf(k)));
+      if (hits.length === 1) return { key: hits[0], how: `size ${sizeOf(hits[0])} from the invoice` };
+      const list = sameFamily.join(', ');
+      return { key: null, options: sameFamily, reason: wanted.length && sized.length
+        ? `size ${wanted.join('/')} doesn’t match a saved ${fam} (saved: ${list})`
+        : `the invoice doesn’t say which ${fam} it is (saved: ${list})` };
+    }
+    return { key: null, options: [], reason: 'no saved metal content for this part number' };
   }
+  // the saved metal content for a line: a user's choice (it.metal_key) wins, '' means none
+  function partFor(cfg, it) {
+    if (it.metal_key !== undefined) return it.metal_key ? cfg.parts[it.metal_key] || null : null;
+    const m = matchPart(cfg, it.part, it.desc);
+    return m.key ? cfg.parts[m.key] : null;
+  }
+  const findPart = (cfg, part) => { const m = matchPart(cfg, part, ''); return m.key ? cfg.parts[m.key] : null; };
+
   // split "text (bracketed note)" so the bracketed part can be blue, like the original
   function splitParen(t) { const m = t.match(/^(.*?)( \(.*\))$/); return m ? [m[1], m[2]] : [t, '']; }
   // rows for one metal component, scaled by the line quantity
@@ -240,7 +271,7 @@
     P.push(para([], { center: 'Metal Content', b: true, sz: 12, color: RED, line: 16.8, pageBreak: true }));
     blank();
     d.items.forEach((it, n) => {
-      const p = findPart(cfg, it.part);
+      const p = partFor(cfg, it);
       if (!p) { P.push(para([[L, `Line ${n + 1}: ${it.part} ${it.desc} -- METAL CONTENT TO BE ADDED`]], { b: true, color: RED })); blank(); return; }
       const q = parseFloat(it.qty) || 1;
       const [t1, t2] = splitParen(`Line ${n + 1}: ${p.title}`);
@@ -289,11 +320,15 @@
   function warnings(d, cfg, email) {
     const w = [];
     if (!email) w.push(`No email on file for ${d.importer.company || 'this importer'}. Add one above if it should appear on the invoice.`);
-    d.items.forEach(it => { if (!findPart(cfg, it.part)) w.push(`No metal-content data saved for part ${it.part}. Page 2 will say “METAL CONTENT TO BE ADDED” for it.`); });
+    d.items.forEach((it, i) => {
+      if (partFor(cfg, it)) return;
+      const m = matchPart(cfg, it.part, it.desc);
+      w.push(`Line ${i + 1} (${it.part}): ${it.metal_key === '' ? 'set to no metal content' : m.reason}. Choose it under \u201cMetal content for page 2\u201d, or page 2 will say “METAL CONTENT TO BE ADDED”.`);
+    });
     d.items.forEach(it => { if (parseFloat(it.net_wgt) === 0) w.push(`Part ${it.part} shows a net weight of 0.00 ${it.wgt_unit} on the FedEx invoice.`); });
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, componentRows };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);

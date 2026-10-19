@@ -56,6 +56,10 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .status.ok{color:var(--ok)} .status.err{color:var(--signal)}
 .warn{background:var(--warnbg);border-left:3px solid var(--signal);padding:10px 12px;border-radius:3px;font-size:.88rem;margin-top:14px}
 .warn ul{margin:4px 0 0;padding-left:18px}
+.metal-line{margin-top:14px}
+.metal-line select{width:100%;padding:9px 11px;border:1px solid var(--steel);border-radius:4px;background:var(--surface);color:var(--ink);font:inherit}
+.metal-line select:focus{outline:3px solid color-mix(in srgb,var(--signal) 40%,transparent);outline-offset:1px;border-color:var(--signal)}
+.metal-title{font-size:.88rem;font-weight:600;margin:16px 0 0}
 .gdocs{font-size:.86rem;color:var(--muted);margin-top:14px;line-height:1.45}
 /* invoice preview: a sheet of paper, always light, Arial like the real document */
 .stage{overflow-x:auto}
@@ -82,7 +86,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-19d · <span id="pc"></span></p>
+      <p class="ver" id="ver">Version 2026-10-20a · <span id="pc"></span></p>
     </div>
   </header>
 
@@ -106,6 +110,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
         <label for="email">Importer email</label>
         <input type="email" id="email" placeholder="Optional" disabled>
         <p class="hint">Shown on the importer ID/EIN line. Saved customers fill in automatically.</p>
+        <div id="metal"></div>
         <div id="warn"></div>
       </section>
 
@@ -129,9 +134,9 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=2026-10-19d"></script>
-<script src="assets.js?v=2026-10-19d"></script>
-<script src="ci-core.js?v=2026-10-19d"></script>
+<script src="config.js?v=2026-10-20a"></script>
+<script src="assets.js?v=2026-10-20a"></script>
+<script src="ci-core.js?v=2026-10-20a"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
 (function(){
@@ -162,14 +167,36 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
       const cust = CONFIG.customers[(parsed.importer.company || '').toUpperCase()] || {};
       $('aci').value = parsed.tracking[0] || '';
       $('email').value = cust.email || '';
+      parsed.items.forEach(it => { const m = ArmodiloCI.matchPart(CONFIG, it.part, it.desc); it.metal_key = m.key || ''; it.metal_how = m.how || ''; });
+      renderMetal();
       $('aci').disabled = $('email').disabled = false;
       $('dl').disabled = false;
       render(); showWarnings();
       setStatus('Invoice read. Check the preview, then download.', 'ok');
     } catch (e) {
-      parsed = null; $('dl').disabled = true;
+      parsed = null; $('dl').disabled = true; $('metal').innerHTML = '';
       setStatus(e.message || 'Could not read that file.', 'err');
     }
+  }
+
+  // one dropdown per invoice line: which saved metal content goes on page 2
+  function renderMetal() {
+    const keys = Object.keys(CONFIG.parts).sort();
+    let out = '<p class="metal-title">Metal content for page 2</p>';
+    parsed.items.forEach((it, i) => {
+      const id = 'metal' + i;
+      const hint = it.metal_key ? (it.metal_how ? `Matched by ${it.metal_how}.` : 'Chosen by hand.') : 'No match found. Choose the product.';
+      out += `<div class="metal-line"><label for="${id}">Line ${i + 1}: ${escapeHtml(it.part)} \u2014 ${escapeHtml(it.desc)}</label>` +
+        `<select id="${id}" data-i="${i}"><option value="">None (add later)</option>` +
+        keys.map(k => `<option value="${escapeHtml(k)}"${k === it.metal_key ? ' selected' : ''}>${escapeHtml(k)} \u2014 ${escapeHtml(CONFIG.parts[k].title.replace(/ \(.*$/, ''))}</option>`).join('') +
+        `</select><p class="hint">${hint}</p></div>`;
+    });
+    $('metal').innerHTML = out;
+    $('metal').querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => {
+      const it = parsed.items[+sel.dataset.i]; it.metal_key = sel.value; it.metal_how = '';
+      renderMetal(); render(); showWarnings();
+      const again = document.getElementById(sel.id); if (again) again.focus();
+    }));
   }
 
   function showWarnings() {
@@ -223,7 +250,7 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
     const blue = t => `<span style="color:#00f">${escapeHtml(t)}</span>`;
     const splitP = t => { const m = t.match(/^(.*?)( \(.*\))$/); return m ? [m[1], m[2]] : [t, '']; };
     d.items.forEach((it, n) => {
-      const p = ArmodiloCI.findPart(CONFIG, it.part);
+      const p = ArmodiloCI.partFor(CONFIG, it);
       if (!p) { h2.push(`<div class="red" style="font-weight:700">Line ${n + 1}: ${escapeHtml(it.part + ' ' + it.desc)} -- METAL CONTENT TO BE ADDED</div><div class="r"></div>`); return; }
       const [t1, t2] = splitP(`Line ${n + 1}: ${p.title}`);
       h2.push(`<div class="red" style="font-weight:700">${escapeHtml(t1)}${t2 ? blue(t2) : ''}</div><div class="r"></div>`);
