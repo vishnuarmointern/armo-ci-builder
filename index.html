@@ -93,7 +93,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-20c · <span id="pc"></span></p>
+      <p class="ver" id="ver">Version 2026-10-20d · <span id="pc"></span></p>
     </div>
   </header>
 
@@ -141,9 +141,9 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=2026-10-20c"></script>
-<script src="assets.js?v=2026-10-20c"></script>
-<script src="ci-core.js?v=2026-10-20c"></script>
+<script src="config.js?v=2026-10-20d"></script>
+<script src="assets.js?v=2026-10-20d"></script>
+<script src="ci-core.js?v=2026-10-20d"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
 (function(){
@@ -294,13 +294,12 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
       const p = ArmodiloCI.partFor(CONFIG, it);
       if (!p) { h2.push(`<div class="red" style="font-weight:700">Line ${n + 1}: ${escapeHtml(it.part + ' ' + it.desc)} -- METAL CONTENT TO BE ADDED</div><div class="r"></div>`); return; }
       const [t1, t2] = splitP(`Line ${n + 1}: ${p.title}`);
-      h2.push(`<div class="red" style="font-weight:700">${escapeHtml(t1)}${t2 ? blue(t2) : ''}</div><div class="r"></div>`);
+      h2.push(`<div class="red" style="font-weight:700">${escapeHtml(t1)}${t2 ? '&nbsp; ' + blue(t2.trim()) : ''}</div><div class="r"></div>`);
       const q = parseFloat(it.qty) || 1;
       p.components.forEach(c => {
-        ArmodiloCI.componentRows(c, q).forEach(r => {
-          const [a, b] = r.startsWith('Component:') ? splitP(r) : [r, ''];
-          h2.push(`<div class="red" style="padding-left:${50.4 - 14.4}px">${escapeHtml(a)}${b ? blue(b) : ''}</div>`);
-        });
+        ArmodiloCI.componentFields(c, q).forEach(x => h2.push(
+          `<div class="red r"><span style="left:${50.4 - L}px">${escapeHtml(x.label)}:</span>` +
+          `<span style="left:${ArmodiloCI.VALUE_X - L}px${x.bold ? ';font-weight:700' : ''}">${escapeHtml(x.value)}${x.note ? '&nbsp; ' + blue(x.note) : ''}</span></div>`));
         h2.push('<div class="r"></div>');
       });
     });

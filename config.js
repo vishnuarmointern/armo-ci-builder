@@ -491,8 +491,6 @@ window.CONFIG = {
           "material": "Steel",
           "value": 18.11,
           "weight": "2.859",
-          "value_label": "Total Component Value",
-          "weight_label": "Total Component Weight",
           "origin": [
             [
               "Country of Melt & Pour",

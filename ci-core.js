@@ -156,22 +156,25 @@
 
   // split "text (bracketed note)" so the bracketed part can be blue, like the original
   function splitParen(t) { const m = t.match(/^(.*?)( \(.*\))$/); return m ? [m[1], m[2]] : [t, '']; }
-  // rows for one metal component, scaled by the line quantity
-  function componentRows(c, q) {
-    const rows = [];
-    if (c.name) rows.push(`Component: ${c.name}${c.note ? ` (${c.note})` : ''}`);
-    if (c.hs) rows.push(`H.S. Code: ${c.hs}`);
-    if (c.qty != null) rows.push(`Quantity: ${+(c.qty * q).toFixed(4)}`);
-    rows.push(`Material: ${c.material}`);
-    rows.push(`${c.value_label || 'Total Value'}: US$${(c.value * q).toFixed(2)}`);
+  // fields for one metal component, scaled by the line quantity: { label, value, note, bold }
+  // (bold like the original: material, value, weight and countries)
+  function componentFields(c, q) {
+    const f = [];
+    if (c.name) f.push({ label: 'Component', value: c.name, note: c.note ? `(${c.note})` : '' });
+    if (c.hs) f.push({ label: 'H.S. Code', value: c.hs });
+    if (c.qty != null) f.push({ label: 'Quantity', value: String(+(c.qty * q).toFixed(4)) });
+    f.push({ label: 'Material', value: c.material, bold: true });
+    f.push({ label: c.value_label || 'Total Value', value: `US$${(c.value * q).toFixed(2)}`, bold: true });
     const dec = (String(c.weight).split('.')[1] || '').length;
     const w = q === 1 ? c.weight : (parseFloat(c.weight) * q).toFixed(dec);
-    rows.push(`${c.weight_label || 'Total Weight'}: ${w} kg${q === 1 && c.weight_suffix ? ' ' + c.weight_suffix : ''}`);
-    c.origin.forEach(([a, b]) => rows.push(`${a}: ${b}`));
-    rows.push(`Reference: ${c.reference}`);
-    return rows;
+    f.push({ label: c.weight_label || 'Total Weight', value: `${w} kg${q === 1 && c.weight_suffix ? ' ' + c.weight_suffix : ''}`, bold: true });
+    c.origin.forEach(([a, b]) => f.push({ label: a, value: b, bold: true }));
+    f.push({ label: 'Reference', value: c.reference });
+    return f;
   }
-
+  // plain "Label: value (note)" lines (used for checks)
+  const componentRows = (c, q) => componentFields(c, q).map(x => `${x.label}: ${x.value}${x.note ? ' ' + x.note : ''}`);
+  const VALUE_X = 198;   // where the answers line up on page 2 (pt from page edge)
 
   // ---------- lines added by hand ----------
   const money = n => (Math.round(n * 100) / 100).toFixed(2);
@@ -316,13 +319,13 @@
       if (!p) { P.push(para([[L, `Line ${n + 1}: ${it.part} ${it.desc} -- METAL CONTENT TO BE ADDED`]], { b: true, color: RED })); blank(); return; }
       const q = parseFloat(it.qty) || 1;
       const [t1, t2] = splitParen(`Line ${n + 1}: ${p.title}`);
-      P.push(para([[L, t1]], { b: true, color: RED, raw: t2 ? run(t2, { b: true, color: BLUE }) : '' }));
+      P.push(para([[L, t1]], { b: true, color: RED, raw: t2 ? run(' ' + t2, { b: true, color: BLUE }) : '' }));
       blank();
       for (const c of p.components) {
-        componentRows(c, q).forEach(r => {
-          const [a, b] = r.startsWith('Component:') ? splitParen(r) : [r, ''];
-          P.push(para([[50.4, a]], { color: RED, raw: b ? run(b, { color: BLUE }) : '' }));
-        });
+        componentFields(c, q).forEach(x => P.push(para([], {
+          tabs: [`<w:tab w:val="left" w:pos="${tw(50.4 - L)}"/>`, `<w:tab w:val="left" w:pos="${tw(VALUE_X - L)}"/>`],
+          raw: TAB + run(x.label + ':', { color: RED }) + TAB + run(x.value, { color: RED, b: x.bold }) + (x.note ? run('  ' + x.note, { color: BLUE }) : '')
+        })));
         blank();
       }
     });
@@ -377,6 +380,6 @@
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, newLine, fillLine, withTotals, metalPage };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);
