@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Armodilo Commercial Invoice Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f2f3f1; --surface:#ffffff; --ink:#1d2124; --muted:#5f6569; --steel:#a4abaf; --line:#d7dbdc;
+  --signal:#cf1f1f; --signal-ink:#ffffff; --ok:#2f6b4f; --warnbg:#fbeeee;
+  color-scheme: light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#16191b; --surface:#202427; --ink:#e8ebec; --muted:#a3aaae; --steel:#5d6569; --line:#343a3e;
+    --signal:#ff5a52; --signal-ink:#1a0505; --ok:#7cc6a0; --warnbg:#3a2222; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#16191b; --surface:#202427; --ink:#e8ebec; --muted:#a3aaae; --steel:#5d6569; --line:#343a3e;
+  --signal:#ff5a52; --signal-ink:#1a0505; --ok:#7cc6a0; --warnbg:#3a2222; color-scheme: dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Archivo",Arial,Helvetica,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+header{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:28px}
+header img{height:34px;width:auto;background:#fff;padding:6px 10px;border-radius:4px}
+header h1{font-size:1.5rem;font-weight:700;letter-spacing:-.01em;margin:0}
+header p{margin:2px 0 0;color:var(--muted);font-size:.95rem}
+.grid{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px}
+.step{display:flex;gap:12px;align-items:baseline;margin:0 0 10px;font-weight:600;font-size:1.02rem}
+.step span{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--surface);font-size:.8rem;flex:none}
+.drop{display:block;border:2px dashed var(--steel);border-radius:6px;padding:26px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--signal);background:color-mix(in srgb,var(--signal) 6%,transparent)}
+.drop:focus-within{outline:3px solid color-mix(in srgb,var(--signal) 45%,transparent);outline-offset:2px}
+.drop strong{display:block;font-size:1.05rem}
+.drop small{color:var(--muted)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.file{margin-top:10px;font-size:.9rem;color:var(--muted);word-break:break-all}
+section+section{margin-top:22px}
+label{display:block;font-size:.88rem;font-weight:500;margin:12px 0 4px}
+input[type=text],input[type=email]{width:100%;padding:9px 11px;border:1px solid var(--steel);border-radius:4px;background:var(--surface);color:var(--ink);font:inherit}
+input:focus{outline:3px solid color-mix(in srgb,var(--signal) 40%,transparent);outline-offset:1px;border-color:var(--signal)}
+.hint{font-size:.82rem;color:var(--muted);margin-top:4px}
+button{font:inherit;font-weight:600;border:0;border-radius:4px;padding:12px 16px;width:100%;background:var(--signal);color:var(--signal-ink);cursor:pointer}
+button:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.status{font-size:.9rem;margin-top:10px;min-height:1.4em}
+.status.ok{color:var(--ok)} .status.err{color:var(--signal)}
+.warn{background:var(--warnbg);border-left:3px solid var(--signal);padding:10px 12px;border-radius:3px;font-size:.88rem;margin-top:14px}
+.warn ul{margin:4px 0 0;padding-left:18px}
+.gdocs{font-size:.86rem;color:var(--muted);margin-top:14px;line-height:1.45}
+/* invoice preview: a sheet of paper, always light, Arial like the real document */
+.stage{overflow-x:auto}
+.sheet{background:#fff;color:#000;width:612px;min-height:792px;margin:0 auto;padding:16px 14.4px 20px;font:10px/13.5px Arial,Helvetica,sans-serif;box-shadow:0 1px 0 #c9cdcf,0 8px 24px -14px rgba(0,0,0,.35);position:relative}
+.sheet .r{position:relative;height:13.5px;white-space:nowrap}
+.sheet .r span{position:absolute;top:0}
+.sheet .c{text-align:center;font-weight:700}
+.sheet .h12{font-size:12px;line-height:16.8px}
+.sheet .h11{font-size:11px;line-height:15.4px}
+.sheet .red{color:#f00}
+.sheet hr{border:0;border-top:1px dashed #000;margin:4px 0 6px}
+.sheet .logo{display:block;margin:0 auto 4px;width:161px}
+.empty{display:grid;place-items:center;min-height:420px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:6px;padding:24px}
+.empty p{max-width:34ch;margin:0}
+.previewlabel{font-size:.88rem;color:var(--muted);margin:0 0 10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img id="hdrLogo" alt="Armodilo Display Solutions">
+    <div>
+      <h1>Commercial invoice builder</h1>
+      <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <section>
+        <p class="step"><span>1</span>Upload the FedEx invoice</p>
+        <label class="drop" id="drop" for="pdf">
+          <strong>Drop the FedEx PDF here</strong>
+          <small>or click to choose a file</small>
+          <input type="file" id="pdf" accept="application/pdf,.pdf">
+        </label>
+        <div class="file" id="fileName"></div>
+      </section>
+
+      <section>
+        <p class="step"><span>2</span>Check the details</p>
+        <label for="aci">ACI number</label>
+        <input type="text" id="aci" inputmode="numeric" placeholder="Fills in from the tracking number" disabled>
+        <p class="hint">Defaults to the tracking number. Change it if FedEx gave a different one.</p>
+        <label for="email">Importer email</label>
+        <input type="email" id="email" placeholder="Optional" disabled>
+        <p class="hint">Shown on the importer ID/EIN line. Saved customers fill in automatically.</p>
+        <div id="warn"></div>
+      </section>
+
+      <section>
+        <p class="step"><span>3</span>Download</p>
+        <button id="dl" disabled>Download for Google Docs (.docx)</button>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <p class="gdocs">To open it in Google Docs: in Google Drive, choose New, then File upload, pick the downloaded file, and open it with Google Docs. Use File, then Download, then PDF in Google Docs if you need a PDF.</p>
+      </section>
+    </div>
+
+    <div>
+      <p class="previewlabel" id="previewLabel">Preview</p>
+      <div class="stage" id="stage">
+        <div class="empty"><p>Upload a FedEx commercial invoice to see the Armodilo version here.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="config.js"></script>
+<script src="assets.js"></script>
+<script src="ci-core.js"></script>
+<script>
+const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
+(function(){
+  const $ = id => document.getElementById(id);
+  $('hdrLogo').src = 'data:image/png;base64,' + LOGO_B64;
+  let parsed = null, srcName = '';
+
+  const drop = $('drop'), input = $('pdf');
+  ['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) handle(f); });
+  input.addEventListener('change', () => { if (input.files[0]) handle(input.files[0]); });
+  ['aci','email'].forEach(id => $(id).addEventListener('input', () => { if (parsed) { render(); showWarnings(); } }));
+
+  function setStatus(msg, cls) { const s = $('status'); s.textContent = msg; s.className = 'status' + (cls ? ' ' + cls : ''); }
+
+  async function handle(file) {
+    srcName = file.name; $('fileName').textContent = file.name;
+    setStatus('Reading the invoice…');
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const lines = await ArmodiloCI.extractLines(pdfjsLib, buf);
+      parsed = ArmodiloCI.parse(lines);
+      const cust = CONFIG.customers[(parsed.importer.company || '').toUpperCase()] || {};
+      $('aci').value = parsed.tracking[0] || '';
+      $('email').value = cust.email || '';
+      $('aci').disabled = $('email').disabled = false;
+      $('dl').disabled = false;
+      render(); showWarnings();
+      setStatus('Invoice read. Check the preview, then download.', 'ok');
+    } catch (e) {
+      parsed = null; $('dl').disabled = true;
+      setStatus(e.message || 'Could not read that PDF.', 'err');
+    }
+  }
+
+  function showWarnings() {
+    const w = ArmodiloCI.warnings(parsed, CONFIG, $('email').value.trim());
+    if (!$('aci').value.trim()) w.unshift('The ACI number is empty.');
+    $('warn').innerHTML = w.length ? '<div class="warn"><strong>Worth checking</strong><ul>' + w.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '';
+  }
+  const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  // HTML preview that mirrors the document layout (positions in points)
+  function render() {
+    const d = parsed, L = 14.4, cn = d.consignee, im = d.importer, email = $('email').value.trim();
+    const row = segs => '<div class="r">' + segs.map(([x, t, a]) => a === 'right'
+      ? `<span style="right:${597.6 - x}px">${escapeHtml(t)}</span>`
+      : `<span style="left:${x - L}px">${escapeHtml(t)}</span>`).join('') + '</div>';
+    const h = [];
+    h.push(`<img class="logo" alt="" src="data:image/png;base64,${LOGO_B64}">`);
+    h.push(`<div class="c h12">ACI-${escapeHtml($('aci').value.trim())}</div><div class="c h12">Commercial Invoice</div>`);
+    h.push('<div class="c h11 red">Please see Page 2 for Steel/Aluminum Content Breakdown</div>');
+    h.push(row([[L,'Invoice Number'],[95.5,'Purpose of Shipment'],[302.7,'Curr'],[355.5,'Ult Dest.']]));
+    h.push(row([[122.4,d.purpose],[300.7,d.currency],[355.1,d.ult_dest]]));
+    h.push(row([[L,'Export Dt'],[81.1,'C.I. References'],[275.5,'Pkgs'],[333.8,'Bill T/C']]));
+    h.push(row([[L,d.export_date],[86.6,d.ci_ref],[222.8,d.pkg_type],[291.1,d.pkgs],[332.8,d.bill_tc]]), '<hr>');
+    h.push(row([[L,'Shipper:'],[302.4,'Consignee:']]));
+    const left = CONFIG.shipper.lines, right = [cn.name, cn.company, ...cn.street, `${cn.city},  ${cn.state} ${cn.zip} ${cn.country}`, cn.phone];
+    for (let k = 0; k < Math.max(left.length, right.length); k++) h.push(row([[L, left[k] || ''], [302.4, right[k] || '']]));
+    h.push(row([[L,`ID/EIN: ${CONFIG.shipper.id_ein}`],[268.1,'ID/EIN:']]), '<hr>');
+    h.push(row([[L,'Broker:'],[266.4,'Importer:']]));
+    const bl = [...d.broker, CONFIG.broker_extra_line], ir = [im.name, im.company, ...im.street, `${im.city},  ${im.state} ${im.zip} ${im.country}`];
+    for (let k = 0; k < Math.max(bl.length, ir.length); k++) h.push(row([[L, bl[k] || ''], [266.4, ir[k] || '']]));
+    h.push('<div class="r"></div>');
+    h.push(`<div class="c h11">${escapeHtml([`ID/EIN: ${im.id || cn.id || 'n/a'}`, email, im.phone || cn.phone].filter(Boolean).join('  '))}</div><hr>`);
+    for (const it of d.items) {
+      h.push(row([[L,`Part Nbr:${it.part}`],[230.5,'Marks/Nbrs:'+(it.marks?' '+it.marks:'')],[328.8,`C/T MFR:${it.mfr}`],[413.7,'Net Wgt:'],[474.8,it.net_wgt],[511,it.wgt_unit]]));
+      h.push(row([[L,`HS Code: ${it.hs}`],[185.5,`Unit Qty: ${it.qty}`],[252.2,it.uom],[307.2,'Unit Value:'],[402.6,`Commodity Value: ${it.commodity_value}`]]));
+      h.push(row([[302.4,it.unit_value]]), row([[L,`Desc: ${it.desc}`]]), '<hr>');
+    }
+    h.push(row([[194.9,'Total Shipment'],[297.1,d.total_weight],[363.8,'Total Commodity'],[468.8,d.total_commodity]]));
+    h.push(row([[230.4,'Weight:'],[308.5,'lbs'],[410.2,'Value:']]));
+    [['Terms of Sale:',d.terms],['Freight:',d.freight],['Insurance:',d.insurance],['Others:',d.others]].forEach(([a,b]) => h.push(row([[410,a,'right'],[482.4,b]])));
+    h.push(row([[410,'Total Invoice Value:','right'],[452,(d.currency==='USD'?'US$':'')+d.total_invoice]]));
+    h.push('<div class="r"></div>', row([[L,'Comments:']]), ...d.comments.map(c => row([[L,c]])));
+    h.push(row([[L,'Tracking Numbers:'],[108,d.tracking.join(', ')]]), '<div class="r"></div>');
+    h.push(row([[L,'I declare all information in this invoice to be true and correct.']]));
+    h.push(`<div style="position:relative;display:flex;align-items:flex-end;height:34px;white-space:nowrap">Signature of shipper:&nbsp;<img alt="Signature" src="data:image/png;base64,${SIG_B64}" style="width:54px;height:30px;margin-bottom:-4px">&nbsp;SHIPPING@ARMODILO.COM<span style="position:absolute;bottom:0;left:${348-L}px">${escapeHtml(d.sig_date)}</span></div>`);
+    h.push('<div class="r"></div><hr style="border-top-style:solid"><div class="r"></div>', row([[L,'Page 1 of 2']]));
+    $('stage').innerHTML = '<div class="sheet">' + h.join('') + '</div>';
+    $('previewLabel').textContent = 'Preview of page 1. Page 2 (metal content) is included in the download.';
+  }
+
+  $('dl').addEventListener('click', async () => {
+    if (!parsed) return;
+    const btn = $('dl'); btn.disabled = true; setStatus('Building the document…');
+    try {
+      const email = $('email').value.trim(), aci = $('aci').value.trim() || 'XXXXXXXXXXXX';
+      const blob = await ArmodiloCI.buildDocx(JSZip, parsed, CONFIG, aci, email, LOGO_B64, SIG_B64);
+      const company = (parsed.importer.company || parsed.consignee.company || 'Customer').replace(/[\\/:*?"<>|]/g, '');
+      const filename = `${parsed.tracking[0] || aci} - ${company} CI.docx`;
+      const downloads = window.claude ? await window.claude.use('downloads') : null;
+      if (downloads) {
+        await downloads.save({ filename, data: blob });
+        setStatus('Saved ' + filename + '.', 'ok');
+      } else {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        setStatus('Downloaded ' + filename + '.', 'ok');
+      }
+    } catch (e) {
+      const code = e && e.code;
+      setStatus(code === 'declined' ? 'Download cancelled.' : (code ? 'Download is not available here (' + code + ').' : (e.message || 'Something went wrong.')), code === 'declined' ? '' : 'err');
+    } finally { btn.disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>
