@@ -1,11 +1,11 @@
 # Armodilo Commercial Invoice Builder
 
-Turns a FedEx commercial invoice PDF into the Armodilo-branded commercial invoice (logo, red page-2 notice, signature, steel/aluminum content page) as a `.docx` that opens cleanly in Google Docs.
+Turns a FedEx commercial invoice (.txt or PDF) into the Armodilo-branded commercial invoice (logo, red page-2 notice, signature, steel/aluminum content page) as a `.docx` that opens cleanly in Google Docs.
 
 Everything runs in the browser. The PDF is never uploaded anywhere.
 
 ## Use it
-1. Open the site and drop in the FedEx commercial invoice PDF.
+1. Open the site and drop in the FedEx commercial invoice (.txt export or PDF).
 2. Check the ACI number (defaults to the tracking number) and the importer email.
 3. Click **Download for Google Docs (.docx)**.
 4. In Google Drive: **New → File upload**, then open the file with Google Docs.

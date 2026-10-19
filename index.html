@@ -82,18 +82,18 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-19c · <span id="pc"></span></p>
+      <p class="ver" id="ver">Version 2026-10-19d · <span id="pc"></span></p>
     </div>
   </header>
 
   <div class="grid">
     <div class="panel">
       <section>
-        <p class="step"><span>1</span>Upload the FedEx invoice</p>
+        <p class="step"><span>1</span>Upload the FedEx invoice (.txt or PDF)</p>
         <label class="drop" id="drop" for="pdf">
-          <strong>Drop the FedEx PDF here</strong>
+          <strong>Drop the FedEx .txt or PDF here</strong>
           <small>or click to choose a file</small>
-          <input type="file" id="pdf" accept="application/pdf,.pdf">
+          <input type="file" id="pdf" accept=".txt,text/plain,.pdf,application/pdf">
         </label>
         <div class="file" id="fileName"></div>
       </section>
@@ -120,7 +120,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
     <div>
       <p class="previewlabel" id="previewLabel">Preview</p>
       <div class="stage" id="stage">
-        <div class="empty"><p>Upload a FedEx commercial invoice to see the Armodilo version here.</p></div>
+        <div class="empty"><p>Upload a FedEx commercial invoice (.txt or PDF) to see the Armodilo version here.</p></div>
       </div>
     </div>
   </div>
@@ -129,9 +129,9 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=2026-10-19c"></script>
-<script src="assets.js?v=2026-10-19c"></script>
-<script src="ci-core.js?v=2026-10-19c"></script>
+<script src="config.js?v=2026-10-19d"></script>
+<script src="assets.js?v=2026-10-19d"></script>
+<script src="ci-core.js?v=2026-10-19d"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
 (function(){
@@ -153,8 +153,11 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
     srcName = file.name; $('fileName').textContent = file.name;
     setStatus('Reading the invoice…');
     try {
+      const isTxt = /\.txt$/i.test(file.name) || file.type === 'text/plain';
       const buf = new Uint8Array(await file.arrayBuffer());
-      const lines = await ArmodiloCI.extractLines(pdfjsLib, buf);
+      const lines = isTxt
+        ? ArmodiloCI.extractTextLines(new TextDecoder('utf-8').decode(buf))
+        : await ArmodiloCI.extractLines(pdfjsLib, buf);
       parsed = ArmodiloCI.parse(lines);
       const cust = CONFIG.customers[(parsed.importer.company || '').toUpperCase()] || {};
       $('aci').value = parsed.tracking[0] || '';
@@ -165,7 +168,7 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
       setStatus('Invoice read. Check the preview, then download.', 'ok');
     } catch (e) {
       parsed = null; $('dl').disabled = true;
-      setStatus(e.message || 'Could not read that PDF.', 'err');
+      setStatus(e.message || 'Could not read that file.', 'err');
     }
   }
 

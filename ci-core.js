@@ -31,6 +31,20 @@
     return lines;
   }
 
+
+  // Fixed-width .txt export from FedEx: same structure as the PDF, columns found by character position.
+  function extractTextLines(text) {
+    const lines = [];
+    text.replace(/\r/g, '').split('\n').forEach((raw, i) => {
+      const words = [];
+      const re = /\S+(?: \S+)*/g;          // runs separated by 2+ spaces
+      let m;
+      while ((m = re.exec(raw))) words.push({ x: m.index * 4, text: m[0] });  // ~4pt per character
+      if (words.length) lines.push({ top: i * 12, words, text: words.map(w => w.text).join(' ') });
+    });
+    return lines;
+  }
+
   const fmtZip = z => /^\d{9}$/.test(z) ? `${z.slice(0, 5)}-${z.slice(5)}` : z;
   const split = (line, x = 260) => [
     line.words.filter(w => w.x < x).map(w => w.text).join(' ').trim(),
@@ -280,6 +294,6 @@
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, parse, buildDocx, warnings, findPart, componentRows };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, componentRows };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);
