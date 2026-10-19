@@ -769,8 +769,10 @@ def component_fields(c, q):
     f.append((c.get("value_label", "Total Value"), f"US${c['value'] * q:,.2f}", "", True))
     dec = len(str(c["weight"]).split(".")[1]) if "." in str(c["weight"]) else 0
     w = c["weight"] if q == 1 else f"{float(c['weight']) * q:.{dec}f}"
-    sfx = " " + c["weight_suffix"] if q == 1 and c.get("weight_suffix") else ""
-    f.append((c.get("weight_label", "Total Weight"), f"{w} kg{sfx}", "", True))
+    sfx = c.get("weight_suffix", "")
+    lb = re.match(r"^([\d.]+)\s*lbs\s*(.*)$", sfx)
+    if lb and q != 1: sfx = f"{float(w) * 2.20462:.2f} lbs" + (f" {lb.group(2)}" if lb.group(2) else "")  # % share unchanged
+    f.append((c.get("weight_label", "Total Weight"), f"{w} kg" + (f" {sfx}" if sfx else ""), "", True))
     f += [(a, b, "", True) for a, b in c["origin"]]
     f.append(("Reference", c["reference"], "", False))
     return f

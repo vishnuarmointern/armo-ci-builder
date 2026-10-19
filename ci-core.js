@@ -167,7 +167,11 @@
     f.push({ label: c.value_label || 'Total Value', value: `US$${(c.value * q).toFixed(2)}`, bold: true });
     const dec = (String(c.weight).split('.')[1] || '').length;
     const w = q === 1 ? c.weight : (parseFloat(c.weight) * q).toFixed(dec);
-    f.push({ label: c.weight_label || 'Total Weight', value: `${w} kg${q === 1 && c.weight_suffix ? ' ' + c.weight_suffix : ''}`, bold: true });
+    // optional "6.51 lbs 12.5%" after the kg: lbs are recalculated for the quantity, the % share stays the same
+    let sfx = c.weight_suffix || '';
+    const lb = sfx.match(/^([\d.]+)\s*lbs\s*(.*)$/);
+    if (lb && q !== 1) sfx = `${(parseFloat(w) * 2.20462).toFixed(2)} lbs${lb[2] ? ' ' + lb[2] : ''}`;
+    f.push({ label: c.weight_label || 'Total Weight', value: `${w} kg${sfx ? ' ' + sfx : ''}`, bold: true });
     c.origin.forEach(([a, b]) => f.push({ label: a, value: b, bold: true }));
     f.push({ label: 'Reference', value: c.reference });
     return f;
@@ -366,6 +370,107 @@
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
   }
 
+
+  // ---------- PDF (jsPDF; Helvetica has the same letter widths as Arial) ----------
+  function buildPdf(jsPDF, d0, cfg, aci, email, logoB64, sigB64) {
+    const d = withTotals(d0);
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const W = 612, PH = 792, BOTTOM = 760, RED = [255, 0, 0], BLUE = [0, 0, 255], BLACK = [0, 0, 0];
+    const multi = d.items.length > 1;
+    let y = 0;
+    const t = (x, top, s, o = {}) => {
+      doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.setFontSize(o.sz || 10); doc.setTextColor(...(o.color || BLACK));
+      doc.text(String(s), x, top + (o.sz || 10) * 0.905, o.right ? { align: 'right' } : undefined);
+    };
+    const tc = (top, s, o = {}) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(o.sz || 12); doc.setTextColor(...(o.color || BLACK)); doc.text(String(s), W / 2, top + (o.sz || 12) * 0.905, { align: 'center' }); };
+    const width = (s, b, sz = 10) => { doc.setFont('helvetica', b ? 'bold' : 'normal'); doc.setFontSize(sz); return doc.getTextWidth(s); };
+    const rule = (top, solid) => { doc.setDrawColor(0); doc.setLineWidth(0.6); doc.setLineDashPattern(solid ? [] : [3, 2], 0); doc.line(L, top + 6, W - L, top + 6); doc.setLineDashPattern([], 0); };
+    const room = h => { if (y + h > BOTTOM) { doc.addPage(); y = 30; } };   // start a new page if this block won't fit
+
+    doc.addImage('data:image/png;base64,' + logoB64, 'PNG', 225, 16, 161, 36.6);
+    tc(60, `ACI-${aci}`); tc(76.5, 'Commercial Invoice');
+    y = 107.6;
+    t(L, y, 'Invoice Number'); t(95.5, y, 'Purpose of Shipment'); t(302.7, y, 'Curr'); t(355.5, y, 'Ult Dest.');
+    y += LH; t(122.4, y, d.purpose); t(300.7, y, d.currency); t(355.1, y, d.ult_dest);
+    y += LH; t(L, y, 'Export Dt'); t(81.1, y, 'C.I. References'); t(275.5, y, 'Pkgs'); t(333.8, y, 'Bill T/C');
+    y += LH; t(L, y, d.export_date); t(86.6, y, d.ci_ref); t(222.8, y, d.pkg_type); t(291.1, y, d.pkgs); t(332.8, y, d.bill_tc);
+    y += LH; rule(y); y += LH;
+    const cn = d.consignee, im = d.importer;
+    t(L, y, 'Shipper:'); t(302.4, y, 'Consignee:');
+    const left = cfg.shipper.lines, right = [cn.name, cn.company, ...cn.street, `${cn.city},  ${cn.state} ${cn.zip} ${cn.country}`, cn.phone];
+    for (let k = 0; k < Math.max(left.length, right.length); k++) { y += LH; if (left[k]) t(L, y, left[k]); if (right[k]) t(302.4, y, right[k]); }
+    y += LH; t(L, y, `ID/EIN: ${cfg.shipper.id_ein}`); t(268.1, y, 'ID/EIN:');
+    y += LH; rule(y); y += LH;
+    t(L, y, 'Broker:'); t(266.4, y, 'Importer:');
+    const bl = [...d.broker, cfg.broker_extra_line], ir = [im.name, im.company, ...im.street, `${im.city},  ${im.state} ${im.zip} ${im.country}`];
+    for (let k = 0; k < Math.max(bl.length, ir.length); k++) { y += LH; if (bl[k]) t(L, y, bl[k]); if (ir[k]) t(266.4, y, ir[k]); }
+    y += LH * 2;
+    tc(y, [`ID/EIN: ${im.id || cn.id || 'n/a'}`, email, im.phone || cn.phone].filter(Boolean).join('  '), { sz: 11 });
+    y += 15; rule(y); y += LH;
+    for (const it of d.items) {
+      room(LH * 5);
+      t(L, y, `Part Nbr:${it.part}`); t(230.5, y, 'Marks/Nbrs:' + (it.marks ? ' ' + it.marks : '')); t(328.8, y, `C/T MFR:${it.mfr}`); t(413.7, y, 'Net Wgt:'); t(474.8, y, it.net_wgt); t(511, y, it.wgt_unit);
+      y += LH; t(L, y, `HS Code: ${it.hs}`); t(185.5, y, `Unit Qty: ${it.qty}`); t(252.2, y, it.uom); t(307.2, y, 'Unit Value:'); t(402.6, y, `Commodity Value: ${it.commodity_value}`);
+      y += LH; t(302.4, y, it.unit_value);
+      y += LH; t(L, y, `Desc: ${it.desc}`);
+      y += LH; rule(y); y += LH;
+    }
+    room(LH * 8);
+    t(194.9, y, 'Total Shipment'); t(297.1, y, d.total_weight); t(363.8, y, 'Total Commodity'); t(468.8, y, d.total_commodity);
+    y += LH; t(230.4, y, 'Weight:'); t(308.5, y, 'lbs'); t(410.2, y, 'Value:');
+    for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]]) { y += LH; t(410, y, lab, { right: true }); t(482.4, y, val); }
+    y += LH; t(410, y, 'Total Invoice Value:', { right: true }); t(452, y, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice);
+    y += LH * 2; room(LH * (d.comments.length + 7) + 17);
+    t(L, y, 'Comments:');
+    d.comments.forEach(c => { y += LH; t(L, y, c); });
+    y += LH; t(L, y, 'Tracking Numbers:'); t(108, y, d.tracking.join(', '));
+    y += LH * 2; t(L, y, 'I declare all information in this invoice to be true and correct.');
+    y += LH + 17;
+    const lab = 'Signature of shipper: ', lw = width(lab);
+    t(L, y, lab);
+    doc.addImage('data:image/png;base64,' + sigB64, 'PNG', L + lw, y + 9 - SIG.h + 6, SIG.w, SIG.h);
+    t(L + lw + SIG.w + 3, y, 'SHIPPING@ARMODILO.COM'); t(348, y, d.sig_date);
+    y += LH * 2; rule(y, true);
+    const p1LabelY = y + LH * 2;
+
+    // metal content always starts on a new page
+    doc.addPage(); const metalPage = doc.getNumberOfPages();
+    tc(16.5, 'Metal Content', { color: RED });
+    y = 49.1;
+    d.items.forEach((it, n) => {
+      const p = partFor(cfg, it);
+      room(LH * 3);
+      if (!p) { t(L, y, `Line ${n + 1}: ${it.part} ${it.desc} -- METAL CONTENT TO BE ADDED`, { b: true, color: RED }); y += LH * 2; return; }
+      const q = parseFloat(it.qty) || 1;
+      const [t1, t2] = splitParen(`Line ${n + 1}: ${p.title}`);
+      t(L, y, t1, { b: true, color: RED });
+      if (t2) t(L + width(t1 + '  ', true), y, t2.trim(), { b: true, color: BLUE });
+      y += LH * 2;
+      for (const c of p.components) {
+        const rows = componentFields(c, q);
+        room(LH * rows.length);
+        for (const x of rows) {
+          t(50.4, y, x.label + ':', { color: RED });
+          t(VALUE_X, y, x.value, { b: x.bold, color: RED });
+          if (x.note) t(VALUE_X + width(x.value + '  ', x.bold), y, x.note, { color: BLUE });
+          y += LH;
+        }
+        y += LH;
+      }
+    });
+    const total = doc.getNumberOfPages();
+    // page numbers: like the original when it is a simple 2-page invoice, otherwise in the footer
+    if (!multi && total === 2) {
+      doc.setPage(1); t(L, p1LabelY, 'Page 1 of 2');
+      doc.setPage(2); t(L, Math.min(y, BOTTOM), 'Page 2 of 2');
+    } else {
+      for (let i = 1; i <= total; i++) { doc.setPage(i); t(L, PH - 24, `Page ${i} of ${total}`); }
+    }
+    doc.setPage(1);
+    tc(92.8, `Please see Page ${metalPage} for Steel/Aluminum Content Breakdown`, { sz: 11, color: RED });
+    return doc.output('blob');
+  }
+
   function warnings(d, cfg, email) {
     const w = [];
     if (!email) w.push(`No email on file for ${d.importer.company || 'this importer'}. Add one above if it should appear on the invoice.`);
@@ -380,6 +485,6 @@
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, buildPdf };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);

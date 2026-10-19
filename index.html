@@ -63,6 +63,8 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .line-head{display:flex;justify-content:space-between;align-items:baseline;font-weight:600;font-size:.9rem}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .fld label{margin-top:8px}
+button.outline{margin-top:10px;background:var(--surface);color:var(--signal);border:2px solid var(--signal)}
+button.outline:disabled{border-color:var(--line);background:var(--surface)}
 button.secondary{margin-top:14px;background:transparent;color:var(--ink);border:1.5px dashed var(--steel);font-weight:600}
 button.secondary:hover{border-color:var(--signal);color:var(--signal)}
 button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;font-size:.85rem;font-weight:600;text-decoration:underline}
@@ -93,7 +95,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-20d · <span id="pc"></span></p>
+      <p class="ver" id="ver">Version 2026-10-20e · <span id="pc"></span></p>
     </div>
   </header>
 
@@ -124,8 +126,9 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
       <section>
         <p class="step"><span>3</span>Download</p>
         <button id="dl" disabled>Download for Google Docs (.docx)</button>
+        <button id="dlpdf" class="outline" disabled>Download PDF (.pdf)</button>
         <div class="status" id="status" role="status" aria-live="polite"></div>
-        <p class="gdocs">To open it in Google Docs: in Google Drive, choose New, then File upload, pick the downloaded file, and open it with Google Docs. Use File, then Download, then PDF in Google Docs if you need a PDF.</p>
+        <p class="gdocs">To open it in Google Docs: in Google Drive, choose New, then File upload, pick the downloaded file, and open it with Google Docs. The PDF button gives you a ready-to-send PDF directly.</p>
       </section>
     </div>
 
@@ -141,9 +144,10 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=2026-10-20d"></script>
-<script src="assets.js?v=2026-10-20d"></script>
-<script src="ci-core.js?v=2026-10-20d"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js?v=2026-10-20e"></script>
+<script src="assets.js?v=2026-10-20e"></script>
+<script src="ci-core.js?v=2026-10-20e"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
 (function(){
@@ -177,11 +181,11 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
       parsed.items.forEach(it => { const m = ArmodiloCI.matchPart(CONFIG, it.part, it.desc); it.metal_key = m.key || ''; it.metal_how = m.how || ''; });
       renderMetal();
       $('aci').disabled = $('email').disabled = false;
-      $('dl').disabled = false;
+      $('dl').disabled = $('dlpdf').disabled = false;
       render(); showWarnings();
       setStatus('Invoice read. Check the preview, then download.', 'ok');
     } catch (e) {
-      parsed = null; $('dl').disabled = true; $('metal').innerHTML = '';
+      parsed = null; $('dl').disabled = $('dlpdf').disabled = true; $('metal').innerHTML = '';
       setStatus(e.message || 'Could not read that file.', 'err');
     }
   }
@@ -308,28 +312,37 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
     $('previewLabel').textContent = 'Preview of both pages.';
   }
 
-  $('dl').addEventListener('click', async () => {
+  // shared download: Claude's download prompt when running on claude.ai, a normal browser download elsewhere
+  async function save(blob, filename) {
+    const downloads = window.claude ? await window.claude.use('downloads') : null;
+    if (downloads) { await downloads.save({ filename, data: blob }); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  async function download(kind) {
     if (!parsed) return;
-    const btn = $('dl'); btn.disabled = true; setStatus('Building the document…');
+    const btns = [$('dl'), $('dlpdf')]; btns.forEach(b => b.disabled = true);
+    setStatus(kind === 'pdf' ? 'Building the PDF…' : 'Building the document…');
     try {
       const email = $('email').value.trim(), aci = $('aci').value.trim() || 'XXXXXXXXXXXX';
-      const blob = await ArmodiloCI.buildDocx(JSZip, parsed, CONFIG, aci, email, LOGO_B64, SIG_B64);
       const company = (parsed.importer.company || parsed.consignee.company || 'Customer').replace(/[\\/:*?"<>|]/g, '');
-      const filename = `${parsed.tracking[0] || aci} - ${company} CI.docx`;
-      const downloads = window.claude ? await window.claude.use('downloads') : null;
-      if (downloads) {
-        await downloads.save({ filename, data: blob });
-        setStatus('Saved ' + filename + '.', 'ok');
+      const base = `${parsed.tracking[0] || aci} - ${company} CI`;
+      let blob, filename;
+      if (kind === 'pdf') {
+        if (!window.jspdf) throw new Error('The PDF tool did not load. Check your internet connection and reload the page.');
+        blob = ArmodiloCI.buildPdf(window.jspdf.jsPDF, parsed, CONFIG, aci, email, LOGO_B64, SIG_B64); filename = base + '.pdf';
       } else {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
-        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-        setStatus('Downloaded ' + filename + '.', 'ok');
+        blob = await ArmodiloCI.buildDocx(JSZip, parsed, CONFIG, aci, email, LOGO_B64, SIG_B64); filename = base + '.docx';
       }
+      await save(blob, filename);
+      setStatus('Saved ' + filename + '.', 'ok');
     } catch (e) {
       const code = e && e.code;
       setStatus(code === 'declined' ? 'Download cancelled.' : (code ? 'Download is not available here (' + code + ').' : (e.message || 'Something went wrong.')), code === 'declined' ? '' : 'err');
-    } finally { btn.disabled = false; }
-  });
+    } finally { btns.forEach(b => b.disabled = !parsed); }
+  }
+  $('dl').addEventListener('click', () => download('docx'));
+  $('dlpdf').addEventListener('click', () => download('pdf'));
 })();
 </script>
 </body>

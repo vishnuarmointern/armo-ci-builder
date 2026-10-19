@@ -7,8 +7,8 @@ Everything runs in the browser. The PDF is never uploaded anywhere.
 ## Use it
 1. Open the site and drop in the FedEx commercial invoice (.txt export or PDF).
 2. Check the ACI number (defaults to the tracking number) and the importer email.
-3. Click **Download for Google Docs (.docx)**.
-4. In Google Drive: **New → File upload**, then open the file with Google Docs.
+3. Click **Download for Google Docs (.docx)**, or **Download PDF (.pdf)** for a ready-to-send PDF.
+4. For Google Docs: in Google Drive choose **New → File upload**, then open the file with Google Docs.
 
 ## Put it on GitHub Pages
 1. Create a new repository on GitHub (for example `armodilo-ci-builder`).
@@ -44,4 +44,4 @@ Under `"parts"` in `config.js`, copy an existing block (for example `"SPHERE"`),
 - Parts with no saved metal content get a "METAL CONTENT TO BE ADDED" line on page 2.
 
 ## Notes
-The page loads pdf.js and JSZip from cdnjs, so it needs an internet connection. Opening `index.html` directly from your computer also works.
+The page loads pdf.js, JSZip and jsPDF from cdnjs, so it needs an internet connection. Opening `index.html` directly from your computer also works.
