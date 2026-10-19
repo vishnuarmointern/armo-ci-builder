@@ -1,6 +1,21 @@
 /* Armodilo CI Builder settings.
    Edit this file to add customers (importer emails) or part numbers (page 2 metal content).
-   Customer keys and part keys must be UPPERCASE and match the FedEx invoice exactly. */
+   Customer keys are the company name in CAPITALS as it appears on the FedEx invoice.
+   Part keys match the FedEx "Part Nbr" (capitals and spaces are ignored, so "ALUR - 14" matches "ALUR-14").
+
+   Each part has:
+     title       - text after "Line 1: " on page 2
+     components  - one block per metal component. Fields:
+       name, note       optional: "Component: <name> (<note>)"
+       hs, qty          optional: "H.S. Code:" and "Quantity:" lines
+       material         "Aluminum" or "Steel"
+       value            US$ number (multiplied by the line quantity)
+       value_label      defaults to "Total Value" (steel uses "Total Component Value")
+       weight           kg as text, e.g. "0.50" (multiplied by the line quantity)
+       weight_label     defaults to "Total Weight" (steel uses "Total Component Weight")
+       weight_suffix    optional text after "kg" (only shown when quantity is 1)
+       origin           list of [label, country] lines
+       reference        file name shown after "Reference:" */
 window.CONFIG = {
   "shipper": {
     "lines": [
@@ -20,17 +35,134 @@ window.CONFIG = {
     }
   },
   "parts": {
-    "FLOOR": {
-      "diagram": "Armodilo_Floor.pdf",
+    "ALUR-14": {
+      "title": "ALUR Tablet Kiosk 14” (*Please see attached diagram ALUR-14-ASSY-01-REV1)",
       "components": [
         {
-          "name": "Faceplate Cover",
-          "item": "F",
-          "hs": "9403.20.0050",
-          "qty": 1,
+          "material": "Aluminum",
+          "value": 216.06,
+          "weight": "2.9525",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CBM.pdf",
+          "weight_suffix": "6.51 lbs 12.5%"
+        },
+        {
+          "material": "Aluminum",
+          "value": 161.12,
+          "weight": "4.7294",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "RJB.pdf",
+          "weight_suffix": "10.43 lbs 20 %"
+        },
+        {
+          "material": "Steel",
+          "value": 67.78,
+          "weight": "8.1591",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "Canada"
+            ]
+          ],
+          "reference": "Dana.pdf, CBM.pdf",
+          "weight_suffix": "17.99 lbs 35%"
+        }
+      ]
+    },
+    "ALUR-16": {
+      "title": "ALUR Tablet Kiosk 16” (*Please see attached diagram ALUR-16-ASSY-01-REV1)",
+      "components": [
+        {
+          "material": "Aluminum",
+          "value": 216.06,
+          "weight": "6.8975",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CBM.pdf"
+        },
+        {
+          "material": "Aluminum",
+          "value": 161.12,
+          "weight": "11.9025",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "RJB.pdf"
+        },
+        {
+          "material": "Steel",
+          "value": 67.78,
+          "weight": "19.75",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "Canada"
+            ]
+          ],
+          "reference": "Dana.pdf, CBM.pdf"
+        }
+      ]
+    },
+    "CURVE": {
+      "title": "CURVE Desktop Tablet Display Stand (*Please see attached diagram Armodilo_Curve.pdf)",
+      "components": [
+        {
           "material": "Steel",
           "value": 17.66,
-          "weight_kg": "0.50",
+          "weight": "0.50",
           "value_label": "Total Component Value",
           "weight_label": "Total Component Weight",
           "origin": [
@@ -39,16 +171,85 @@ window.CONFIG = {
               "United States of America"
             ]
           ],
-          "reference": "SDI.pdf"
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
         },
         {
-          "name": "Aluminum Tube",
-          "item": "B",
+          "material": "Aluminum",
+          "value": 38.5,
+          "weight": "1.140",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "Henan.pdf",
+          "name": "Curve Base",
+          "note": "Item “B” in attached document",
           "hs": "9403.20.0050",
-          "qty": 1,
+          "qty": 1
+        }
+      ]
+    },
+    "FPC": {
+      "title": "FPC Faceplate Cover",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.500",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "FLOOR": {
+      "title": "FLOOR Freestanding Tablet Display Stand (*Please see attached diagram Armodilo_Floor.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
           "material": "Aluminum",
           "value": 58.6,
-          "weight_kg": "1.022",
+          "weight": "1.022",
           "origin": [
             [
               "Primary Country of Smelt",
@@ -63,16 +264,16 @@ window.CONFIG = {
               "United States of America"
             ]
           ],
-          "reference": "Hydro.pdf"
+          "reference": "Hydro.pdf",
+          "name": "Aluminum Tube",
+          "note": "Item “B” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
         },
         {
-          "name": "Base Plate",
-          "item": "C",
-          "hs": "9403.20.0050",
-          "qty": 1,
           "material": "Aluminum",
           "value": 48.33,
-          "weight_kg": "2.562",
+          "weight": "2.562",
           "origin": [
             [
               "Primary Country of Smelt",
@@ -87,7 +288,357 @@ window.CONFIG = {
               "China"
             ]
           ],
-          "reference": "Henan.pdf"
+          "reference": "Henan.pdf",
+          "name": "Base Plate",
+          "note": "Item “C” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "KBT-02": {
+      "title": "KBT-02 Keyboard Tray",
+      "components": [
+        {
+          "material": "Aluminum",
+          "value": 24.39,
+          "weight": "0.408",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "Henan.pdf",
+          "name": "Keyboard Tray",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "KEYO": {
+      "title": "KEYO Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Keyo.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 42.0,
+          "weight": ".705",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 35.0,
+          "weight": ".795",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "BTS.pdf (page 3)",
+          "name": "Box",
+          "note": "Item “G” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "REVOLVE": {
+      "title": "REVOLVE Revolve Pivot Add-on",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 8.42,
+          "weight": "0.04",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Revolve Top",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 20.41,
+          "weight": "0.14",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CBM.pdf",
+          "name": "Revolve Base",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "SPHERE": {
+      "title": "SPHERE Desktop Tablet Display Stand (*Please see attached diagram Armodilo_Sphere.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Steel",
+          "value": 18.11,
+          "weight": "2.859",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "Canada"
+            ]
+          ],
+          "reference": "STELCO.pdf",
+          "name": "Steel Base",
+          "note": "Bottom of Item “B” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "SURFACE": {
+      "title": "SURFACE Mount Tablet Display Stand (*Please see attached diagram Armodilo_Surface.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 30.62,
+          "weight": ".180",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CanArt.pdf",
+          "name": "Surface Tube",
+          "note": "Item “B” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "TILT": {
+      "title": "TILT Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Tilt.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “D” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 13.88,
+          "weight": ".130",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "Almag CA.pdf",
+          "name": "Tilt Tube",
+          "note": "Between Items “E” and Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "WALL": {
+      "title": "WALL Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Wall.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “D” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 14.08,
+          "weight": "0.13",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "Almag.pdf",
+          "name": "Wall Tube",
+          "note": "Item “E” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "VESAADAPTER": {
+      "title": "VESA Adapter Vesa Adapter for 75 and 100",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 9.35,
+          "weight": ".0618",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "VESA": {
+      "title": "VESA Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Vesa.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “D” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
         }
       ]
     }

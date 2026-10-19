@@ -70,6 +70,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .sheet .logo{display:block;margin:0 auto 4px;width:161px}
 .empty{display:grid;place-items:center;min-height:420px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:6px;padding:24px}
 .empty p{max-width:34ch;margin:0}
+.ver{font-size:.78rem!important;color:var(--muted)}
 .previewlabel{font-size:.88rem;color:var(--muted);margin:0 0 10px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -81,6 +82,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
+      <p class="ver" id="ver">Version 2026-10-19c · <span id="pc"></span></p>
     </div>
   </header>
 
@@ -127,14 +129,15 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js"></script>
-<script src="assets.js"></script>
-<script src="ci-core.js"></script>
+<script src="config.js?v=2026-10-19c"></script>
+<script src="assets.js?v=2026-10-19c"></script>
+<script src="ci-core.js?v=2026-10-19c"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
 (function(){
   const $ = id => document.getElementById(id);
   $('hdrLogo').src = 'data:image/png;base64,' + LOGO_B64;
+  $('pc').textContent = Object.keys(CONFIG.parts || {}).length + ' part numbers loaded';
   let parsed = null, srcName = '';
 
   const drop = $('drop'), input = $('pdf');
@@ -169,6 +172,8 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
   function showWarnings() {
     const w = ArmodiloCI.warnings(parsed, CONFIG, $('email').value.trim());
     if (!$('aci').value.trim()) w.unshift('The ACI number is empty.');
+    const nParts = Object.keys(CONFIG.parts || {}).length, oldFmt = Object.values(CONFIG.parts || {}).some(p => !p.title);
+    if (oldFmt || nParts < 14) w.unshift(`config.js looks out of date (${nParts} part${nParts === 1 ? '' : 's'} loaded). Upload the latest config.js to GitHub.`);
     $('warn').innerHTML = w.length ? '<div class="warn"><strong>Worth checking</strong><ul>' + w.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '';
   }
   const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -210,8 +215,27 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
     h.push(row([[L,'I declare all information in this invoice to be true and correct.']]));
     h.push(`<div style="position:relative;display:flex;align-items:flex-end;height:34px;white-space:nowrap">Signature of shipper:&nbsp;<img alt="Signature" src="data:image/png;base64,${SIG_B64}" style="width:54px;height:30px;margin-bottom:-4px">&nbsp;SHIPPING@ARMODILO.COM<span style="position:absolute;bottom:0;left:${348-L}px">${escapeHtml(d.sig_date)}</span></div>`);
     h.push('<div class="r"></div><hr style="border-top-style:solid"><div class="r"></div>', row([[L,'Page 1 of 2']]));
-    $('stage').innerHTML = '<div class="sheet">' + h.join('') + '</div>';
-    $('previewLabel').textContent = 'Preview of page 1. Page 2 (metal content) is included in the download.';
+    // page 2: metal content
+    const h2 = ['<div class="c h12 red">Metal Content</div><div class="r"></div>'];
+    const blue = t => `<span style="color:#00f">${escapeHtml(t)}</span>`;
+    const splitP = t => { const m = t.match(/^(.*?)( \(.*\))$/); return m ? [m[1], m[2]] : [t, '']; };
+    d.items.forEach((it, n) => {
+      const p = ArmodiloCI.findPart(CONFIG, it.part);
+      if (!p) { h2.push(`<div class="red" style="font-weight:700">Line ${n + 1}: ${escapeHtml(it.part + ' ' + it.desc)} -- METAL CONTENT TO BE ADDED</div><div class="r"></div>`); return; }
+      const [t1, t2] = splitP(`Line ${n + 1}: ${p.title}`);
+      h2.push(`<div class="red" style="font-weight:700">${escapeHtml(t1)}${t2 ? blue(t2) : ''}</div><div class="r"></div>`);
+      const q = parseFloat(it.qty) || 1;
+      p.components.forEach(c => {
+        ArmodiloCI.componentRows(c, q).forEach(r => {
+          const [a, b] = r.startsWith('Component:') ? splitP(r) : [r, ''];
+          h2.push(`<div class="red" style="padding-left:${50.4 - 14.4}px">${escapeHtml(a)}${b ? blue(b) : ''}</div>`);
+        });
+        h2.push('<div class="r"></div>');
+      });
+    });
+    h2.push(row([[L, 'Page 2 of 2']]));
+    $('stage').innerHTML = '<div class="sheet">' + h.join('') + '</div><div class="sheet" style="margin-top:20px">' + h2.join('') + '</div>';
+    $('previewLabel').textContent = 'Preview of both pages.';
   }
 
   $('dl').addEventListener('click', async () => {

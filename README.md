@@ -31,8 +31,11 @@ In `config.js`, under `"customers"`, add the company name exactly as it appears 
 "ONCE UPON A CHILD": { "email": "someone@example.com", "importer_id": "n/a" }
 ```
 
+## Part numbers included
+ALUR-14, ALUR-16, CURVE, FLOOR, FPC, KBT-02, KEYO, REVOLVE, SPHERE, SURFACE, TILT, VESA, VESA ADAPTER, WALL.
+
 ## Adding a part number
-Under `"parts"`, copy the `"FLOOR"` block, rename it to the new part number (for example `"SPHERE"`), and change the diagram name and component values.
+Under `"parts"` in `config.js`, copy an existing block (for example `"SPHERE"`), rename it to the new part number, and change the title and component values. The field guide is at the top of `config.js`.
 
 ## Rules built in
 - Red "Please see Page 2" line on every invoice.
