@@ -93,6 +93,32 @@
     return d;
   }
 
+
+  // part lookup ignores case and spaces ("ALUR - 14" matches "ALUR-14")
+  const partKey = s => String(s).toUpperCase().replace(/\s+/g, '');
+  function findPart(cfg, part) {
+    const k = partKey(part);
+    const hit = Object.keys(cfg.parts).find(x => partKey(x) === k);
+    return hit ? cfg.parts[hit] : null;
+  }
+  // split "text (bracketed note)" so the bracketed part can be blue, like the original
+  function splitParen(t) { const m = t.match(/^(.*?)( \(.*\))$/); return m ? [m[1], m[2]] : [t, '']; }
+  // rows for one metal component, scaled by the line quantity
+  function componentRows(c, q) {
+    const rows = [];
+    if (c.name) rows.push(`Component: ${c.name}${c.note ? ` (${c.note})` : ''}`);
+    if (c.hs) rows.push(`H.S. Code: ${c.hs}`);
+    if (c.qty != null) rows.push(`Quantity: ${+(c.qty * q).toFixed(4)}`);
+    rows.push(`Material: ${c.material}`);
+    rows.push(`${c.value_label || 'Total Value'}: US$${(c.value * q).toFixed(2)}`);
+    const dec = (String(c.weight).split('.')[1] || '').length;
+    const w = q === 1 ? c.weight : (parseFloat(c.weight) * q).toFixed(dec);
+    rows.push(`${c.weight_label || 'Total Weight'}: ${w} kg${q === 1 && c.weight_suffix ? ' ' + c.weight_suffix : ''}`);
+    c.origin.forEach(([a, b]) => rows.push(`${a}: ${b}`));
+    rows.push(`Reference: ${c.reference}`);
+    return rows;
+  }
+
   // ---------- docx ----------
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const tw = pt => Math.round(pt * 20);
@@ -137,7 +163,7 @@
 
   function buildBody(d, cfg, aci, email) {
     picId = 1;
-    const RED = 'FF0000';
+    const RED = 'FF0000', BLUE = '0000FF';
     const P = [];
     const blank = () => P.push(para());
     const hr = (k = 'dashed') => { P.push(para([], { rule: k, line: 7 })); P.push(para([], { line: 6.5 })); };
@@ -200,19 +226,17 @@
     P.push(para([], { center: 'Metal Content', b: true, sz: 12, color: RED, line: 16.8, pageBreak: true }));
     blank();
     d.items.forEach((it, n) => {
-      const p = cfg.parts[it.part.toUpperCase()];
+      const p = findPart(cfg, it.part);
       if (!p) { P.push(para([[L, `Line ${n + 1}: ${it.part} ${it.desc} -- METAL CONTENT TO BE ADDED`]], { b: true, color: RED })); blank(); return; }
       const q = parseFloat(it.qty) || 1;
-      P.push(para([[L, `Line ${n + 1}: ${it.part} ${it.desc} (*Please see attached diagram ${p.diagram})`]], { b: true, color: RED }));
+      const [t1, t2] = splitParen(`Line ${n + 1}: ${p.title}`);
+      P.push(para([[L, t1]], { b: true, color: RED, raw: t2 ? run(t2, { b: true, color: BLUE }) : '' }));
       blank();
       for (const c of p.components) {
-        const dec = (c.weight_kg.split('.')[1] || '').length;
-        const rows = [`Component: ${c.name} (Item \u201c${c.item}\u201d in attached document)`, `H.S. Code: ${c.hs}`,
-          `Quantity: ${+(c.qty * q).toFixed(4)}`, `Material: ${c.material}`,
-          `${c.value_label || 'Total Value'}: US$${(c.value * q).toFixed(2)}`,
-          `${c.weight_label || 'Total Weight'}: ${(parseFloat(c.weight_kg) * q).toFixed(dec)} kg`,
-          ...c.origin.map(([a, b]) => `${a}: ${b}`), `Reference: ${c.reference}`];
-        rows.forEach(r => P.push(para([[50.4, r]], { color: RED })));
+        componentRows(c, q).forEach(r => {
+          const [a, b] = r.startsWith('Component:') ? splitParen(r) : [r, ''];
+          P.push(para([[50.4, a]], { color: RED, raw: b ? run(b, { color: BLUE }) : '' }));
+        });
         blank();
       }
     });
@@ -251,11 +275,11 @@
   function warnings(d, cfg, email) {
     const w = [];
     if (!email) w.push(`No email on file for ${d.importer.company || 'this importer'}. Add one above if it should appear on the invoice.`);
-    d.items.forEach(it => { if (!cfg.parts[it.part.toUpperCase()]) w.push(`No metal-content data saved for part ${it.part}. Page 2 will say “METAL CONTENT TO BE ADDED” for it.`); });
+    d.items.forEach(it => { if (!findPart(cfg, it.part)) w.push(`No metal-content data saved for part ${it.part}. Page 2 will say “METAL CONTENT TO BE ADDED” for it.`); });
     d.items.forEach(it => { if (parseFloat(it.net_wgt) === 0) w.push(`Part ${it.part} shows a net weight of 0.00 ${it.wgt_unit} on the FedEx invoice.`); });
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, parse, buildDocx, warnings };
+  root.ArmodiloCI = { extractLines, parse, buildDocx, warnings, findPart, componentRows };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);

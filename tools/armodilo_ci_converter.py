@@ -35,17 +35,134 @@ CONFIG = {
     }
   },
   "parts": {
-    "FLOOR": {
-      "diagram": "Armodilo_Floor.pdf",
+    "ALUR-14": {
+      "title": "ALUR Tablet Kiosk 14” (*Please see attached diagram ALUR-14-ASSY-01-REV1)",
       "components": [
         {
-          "name": "Faceplate Cover",
-          "item": "F",
-          "hs": "9403.20.0050",
-          "qty": 1,
+          "material": "Aluminum",
+          "value": 216.06,
+          "weight": "2.9525",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CBM.pdf",
+          "weight_suffix": "6.51 lbs 12.5%"
+        },
+        {
+          "material": "Aluminum",
+          "value": 161.12,
+          "weight": "4.7294",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "RJB.pdf",
+          "weight_suffix": "10.43 lbs 20 %"
+        },
+        {
+          "material": "Steel",
+          "value": 67.78,
+          "weight": "8.1591",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "Canada"
+            ]
+          ],
+          "reference": "Dana.pdf, CBM.pdf",
+          "weight_suffix": "17.99 lbs 35%"
+        }
+      ]
+    },
+    "ALUR-16": {
+      "title": "ALUR Tablet Kiosk 16” (*Please see attached diagram ALUR-16-ASSY-01-REV1)",
+      "components": [
+        {
+          "material": "Aluminum",
+          "value": 216.06,
+          "weight": "6.8975",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CBM.pdf"
+        },
+        {
+          "material": "Aluminum",
+          "value": 161.12,
+          "weight": "11.9025",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "RJB.pdf"
+        },
+        {
+          "material": "Steel",
+          "value": 67.78,
+          "weight": "19.75",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "Canada"
+            ]
+          ],
+          "reference": "Dana.pdf, CBM.pdf"
+        }
+      ]
+    },
+    "CURVE": {
+      "title": "CURVE Desktop Tablet Display Stand (*Please see attached diagram Armodilo_Curve.pdf)",
+      "components": [
+        {
           "material": "Steel",
           "value": 17.66,
-          "weight_kg": "0.50",
+          "weight": "0.50",
           "value_label": "Total Component Value",
           "weight_label": "Total Component Weight",
           "origin": [
@@ -54,16 +171,85 @@ CONFIG = {
               "United States of America"
             ]
           ],
-          "reference": "SDI.pdf"
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
         },
         {
-          "name": "Aluminum Tube",
-          "item": "B",
+          "material": "Aluminum",
+          "value": 38.5,
+          "weight": "1.140",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "Henan.pdf",
+          "name": "Curve Base",
+          "note": "Item “B” in attached document",
           "hs": "9403.20.0050",
-          "qty": 1,
+          "qty": 1
+        }
+      ]
+    },
+    "FPC": {
+      "title": "FPC Faceplate Cover",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.500",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "FLOOR": {
+      "title": "FLOOR Freestanding Tablet Display Stand (*Please see attached diagram Armodilo_Floor.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
           "material": "Aluminum",
           "value": 58.6,
-          "weight_kg": "1.022",
+          "weight": "1.022",
           "origin": [
             [
               "Primary Country of Smelt",
@@ -78,16 +264,16 @@ CONFIG = {
               "United States of America"
             ]
           ],
-          "reference": "Hydro.pdf"
+          "reference": "Hydro.pdf",
+          "name": "Aluminum Tube",
+          "note": "Item “B” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
         },
         {
-          "name": "Base Plate",
-          "item": "C",
-          "hs": "9403.20.0050",
-          "qty": 1,
           "material": "Aluminum",
           "value": 48.33,
-          "weight_kg": "2.562",
+          "weight": "2.562",
           "origin": [
             [
               "Primary Country of Smelt",
@@ -102,7 +288,357 @@ CONFIG = {
               "China"
             ]
           ],
-          "reference": "Henan.pdf"
+          "reference": "Henan.pdf",
+          "name": "Base Plate",
+          "note": "Item “C” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "KBT-02": {
+      "title": "KBT-02 Keyboard Tray",
+      "components": [
+        {
+          "material": "Aluminum",
+          "value": 24.39,
+          "weight": "0.408",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "Henan.pdf",
+          "name": "Keyboard Tray",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "KEYO": {
+      "title": "KEYO Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Keyo.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 42.0,
+          "weight": ".705",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 35.0,
+          "weight": ".795",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "China"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "China"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "China"
+            ]
+          ],
+          "reference": "BTS.pdf (page 3)",
+          "name": "Box",
+          "note": "Item “G” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "REVOLVE": {
+      "title": "REVOLVE Revolve Pivot Add-on",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 8.42,
+          "weight": "0.04",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Revolve Top",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 20.41,
+          "weight": "0.14",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CBM.pdf",
+          "name": "Revolve Base",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "SPHERE": {
+      "title": "SPHERE Desktop Tablet Display Stand (*Please see attached diagram Armodilo_Sphere.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Steel",
+          "value": 18.11,
+          "weight": "2.859",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "Canada"
+            ]
+          ],
+          "reference": "STELCO.pdf",
+          "name": "Steel Base",
+          "note": "Bottom of Item “B” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "SURFACE": {
+      "title": "SURFACE Mount Tablet Display Stand (*Please see attached diagram Armodilo_Surface.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 30.62,
+          "weight": ".180",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "CanArt.pdf",
+          "name": "Surface Tube",
+          "note": "Item “B” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "TILT": {
+      "title": "TILT Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Tilt.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “D” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 13.88,
+          "weight": ".130",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "Almag CA.pdf",
+          "name": "Tilt Tube",
+          "note": "Between Items “E” and Item “F” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "WALL": {
+      "title": "WALL Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Wall.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “D” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        },
+        {
+          "material": "Aluminum",
+          "value": 14.08,
+          "weight": "0.13",
+          "origin": [
+            [
+              "Primary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Secondary Country of Smelt",
+              "Canada"
+            ],
+            [
+              "Country of Most Recent Cast",
+              "Canada"
+            ]
+          ],
+          "reference": "Almag.pdf",
+          "name": "Wall Tube",
+          "note": "Item “E” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "VESAADAPTER": {
+      "title": "VESA Adapter Vesa Adapter for 75 and 100",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 9.35,
+          "weight": ".0618",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "hs": "9403.20.0050",
+          "qty": 1
+        }
+      ]
+    },
+    "VESA": {
+      "title": "VESA Wall Mount Tablet Display Stand (*Please see attached diagram Armodilo_Vesa.pdf)",
+      "components": [
+        {
+          "material": "Steel",
+          "value": 17.66,
+          "weight": "0.50",
+          "value_label": "Total Component Value",
+          "weight_label": "Total Component Weight",
+          "origin": [
+            [
+              "Country of Melt & Pour",
+              "United States of America"
+            ]
+          ],
+          "reference": "SDI.pdf",
+          "name": "Faceplate Cover",
+          "note": "Item “D” in attached document",
+          "hs": "9403.20.0050",
+          "qty": 1
         }
       ]
     }
@@ -113,6 +649,30 @@ SIG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAF0AAAA0CAAAAADN4WuNAAADyElEQVR42rWXTWhjVRTHf
 SIG_W, SIG_H = 54, 30   # signature size in points
 
 LOGO_B64 = "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"
+
+def _pkey(s): return re.sub(r"\s+", "", str(s)).upper()
+def find_part(cfg, part):
+    """Part lookup ignoring case and spaces ("ALUR - 14" matches "ALUR-14")."""
+    for k, v in cfg["parts"].items():
+        if _pkey(k) == _pkey(part): return v
+    return None
+def split_paren(t):
+    """Split 'text (note)' so the bracketed note can be printed in blue, like the original."""
+    m = re.match(r"^(.*?)( \(.*\))$", t)
+    return (m.group(1), m.group(2)) if m else (t, "")
+def component_rows(c, q):
+    rows = []
+    if c.get("name"): rows.append(f"Component: {c['name']}" + (f" ({c['note']})" if c.get("note") else ""))
+    if c.get("hs"): rows.append(f"H.S. Code: {c['hs']}")
+    if c.get("qty") is not None: rows.append(f"Quantity: {c['qty'] * q:g}")
+    rows.append(f"Material: {c['material']}")
+    rows.append(f"{c.get('value_label', 'Total Value')}: US${c['value'] * q:,.2f}")
+    dec = len(str(c["weight"]).split(".")[1]) if "." in str(c["weight"]) else 0
+    w = c["weight"] if q == 1 else f"{float(c['weight']) * q:.{dec}f}"
+    sfx = " " + c["weight_suffix"] if q == 1 and c.get("weight_suffix") else ""
+    rows.append(f"{c.get('weight_label', 'Total Weight')}: {w} kg{sfx}")
+    rows += [f"{a}: {b}" for a, b in c["origin"]] + [f"Reference: {c['reference']}"]
+    return rows
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FD = "/usr/share/fonts/truetype/liberation/"
@@ -250,7 +810,7 @@ def money(s):
 def render(d, cfg, out, aci):
     doc = Doc(out); c = doc.c
     cust = cfg["customers"].get(d["importer"]["company"].upper(), {})
-    parts = [it for it in d["items"] if it["part"].upper() in cfg["parts"]]
+    parts = [it for it in d["items"] if find_part(cfg, it["part"])]
     has_p2 = bool(parts)
     total_pages = 2
 
@@ -335,22 +895,22 @@ def render(d, cfg, out, aci):
         doc.tc(16.5, "Metal Content", color=red)
         y = 49.1
         for n, it in enumerate(d["items"], 1):
-            p = cfg["parts"].get(it["part"].upper())
+            p = find_part(cfg, it["part"])
             if not p: continue
             q = float(it["qty"] or 1)
-            doc.t(L, y, f"Line {n}: {it['part']} {it['desc']} (*Please see attached diagram {p['diagram']})", font="Arial-Bold", color=red)
+            t1, t2 = split_paren(f"Line {n}: {p['title']}")
+            doc.t(L, y, t1, font="Arial-Bold", color=red)
+            if t2: doc.t(L + pdfmetrics.stringWidth(t1, "Arial-Bold", 10), y, t2, font="Arial-Bold", color=HexColor("#0000FF"))
             y += LH * 2
             for comp in p["components"]:
-                qty = comp["qty"] * q
-                rows = [f"Component: {comp['name']} (Item \u201c{comp['item']}\u201d in attached document)",
-                        f"H.S. Code: {comp['hs']}", f"Quantity: {qty:g}", f"Material: {comp['material']}",
-                        f"{comp.get('value_label', 'Total Value')}: US${comp['value'] * q:,.2f}",
-                        f"{comp.get('weight_label', 'Total Weight')}: {float(comp['weight_kg']) * q:.{len(comp['weight_kg'].split('.')[-1])}f} kg"]
-                rows += [f"{a}: {b}" for a, b in comp["origin"]] + [f"Reference: {comp['reference']}"]
+                rows = component_rows(comp, q)
                 for r in rows:
                     if y > H - 40:
                         c.showPage(); y = 30
-                    doc.t(50.4, y, r, color=red); y += LH
+                    a, b = split_paren(r) if r.startswith("Component:") else (r, "")
+                    doc.t(50.4, y, a, color=red)
+                    if b: doc.t(50.4 + pdfmetrics.stringWidth(a, "Arial", 10), y, b, color=HexColor("#0000FF"))
+                    y += LH
                 y += LH
         doc.t(L, y, "Page 2 of 2")
     c.save()
@@ -427,7 +987,7 @@ def render_docx(d, cfg, out, aci):
 
     cust = cfg["customers"].get(d["importer"]["company"].upper(), {})
     cn, im = d["consignee"], d["importer"]
-    has_p2 = any(it["part"].upper() in cfg["parts"] for it in d["items"])
+    has_p2 = any(find_part(cfg, it["part"]) for it in d["items"])
 
     lp = doc.add_paragraph(); lp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     lp.paragraph_format.line_spacing = 1.0
@@ -488,7 +1048,7 @@ def render_docx(d, cfg, out, aci):
     P([(0, "Metal Content")], bold=True, size=12, color=RED, center=True)
     P()
     for n, it in enumerate(d["items"], 1):
-        p = cfg["parts"].get(it["part"].upper())
+        p = find_part(cfg, it["part"])
         P([(L, f"Line {n}: {it['part']} {it['desc']} (*Please see attached diagram {p['diagram'] if p else '[diagram]'})")], bold=True, color=RED)
         P()
         if not p:
@@ -496,11 +1056,7 @@ def render_docx(d, cfg, out, aci):
             P(); continue
         q = float(it["qty"] or 1)
         for comp in p["components"]:
-            rows = [f"Component: {comp['name']} (Item \u201c{comp['item']}\u201d in attached document)",
-                    f"H.S. Code: {comp['hs']}", f"Quantity: {comp['qty'] * q:g}", f"Material: {comp['material']}",
-                    f"{comp.get('value_label', 'Total Value')}: US${comp['value'] * q:,.2f}",
-                    f"{comp.get('weight_label', 'Total Weight')}: {float(comp['weight_kg']) * q:.{len(comp['weight_kg'].split('.')[-1])}f} kg"]
-            rows += [f"{a}: {b}" for a, b in comp["origin"]] + [f"Reference: {comp['reference']}"]
+            rows = component_rows(comp, q)
             for r in rows: P([(0, r)], color=RED, left=36)
             P()
     P([(L, "Page 2 of 2")])
@@ -555,8 +1111,8 @@ def render_docx(d, cfg, out, aci):
     pf = st.paragraph_format; pf.space_before = pf.space_after = Pt(0)
     pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY; pf.line_spacing = Pt(LH)
 
-    def para(segs=(), center=None, bold=False, size=10, color=None, rule=None, page_break=False):
-        """segs: list of (x_points, text) or (x, text, 'right'); center: centered text"""
+    def para(segs=(), center=None, bold=False, size=10, color=None, rule=None, page_break=False, extra=None):
+        """segs: list of (x_points, text) or (x, text, 'right'); center: centered text; extra: (text, color) run at the end"""
         pp = doc.add_paragraph()
         if page_break:
             from docx.enum.text import WD_BREAK
@@ -575,6 +1131,8 @@ def render_docx(d, cfg, out, aci):
                 pp.add_run("\t")
             r = pp.add_run(text); r.bold = bold; r.font.size = Pt(size)
             if color: r.font.color.rgb = color
+        if extra and extra[0]:
+            r = pp.add_run(extra[0]); r.bold = bold; r.font.size = Pt(size); r.font.color.rgb = extra[1]
         if rule:
             pPr = pp._p.get_or_add_pPr(); bdr = OxmlElement("w:pBdr"); b = OxmlElement("w:bottom")
             b.set(qn("w:val"), rule); b.set(qn("w:sz"), "6"); b.set(qn("w:space"), "1"); b.set(qn("w:color"), "000000")
@@ -649,19 +1207,19 @@ def render_docx(d, cfg, out, aci):
     para(center="Metal Content", bold=True, size=12, color=RED, page_break=True)
     blank()
     for n, it in enumerate(d["items"], 1):
-        p = cfg["parts"].get(it["part"].upper())
+        p = find_part(cfg, it["part"])
         if not p:
             para([(L, f"Line {n}: {it['part']} {it['desc']} -- METAL CONTENT TO BE ADDED")], bold=True, color=RED); blank(); continue
         q = float(it["qty"] or 1)
-        para([(L, f"Line {n}: {it['part']} {it['desc']} (*Please see attached diagram {p['diagram']})")], bold=True, color=RED)
+        BLUE = RGBColor(0, 0, 0xFF)
+        t1, t2 = split_paren(f"Line {n}: {p['title']}")
+        para([(L, t1)], bold=True, color=RED, extra=(t2, BLUE))
         blank()
         for comp in p["components"]:
-            rows = [f"Component: {comp['name']} (Item \u201c{comp['item']}\u201d in attached document)",
-                    f"H.S. Code: {comp['hs']}", f"Quantity: {comp['qty'] * q:g}", f"Material: {comp['material']}",
-                    f"{comp.get('value_label', 'Total Value')}: US${comp['value'] * q:,.2f}",
-                    f"{comp.get('weight_label', 'Total Weight')}: {float(comp['weight_kg']) * q:.{len(comp['weight_kg'].split('.')[-1])}f} kg"]
-            rows += [f"{a}: {b}" for a, b in comp["origin"]] + [f"Reference: {comp['reference']}"]
-            for r in rows: para([(50.4, r)], color=RED)
+            rows = component_rows(comp, q)
+            for r in rows:
+                a, b = split_paren(r) if r.startswith("Component:") else (r, "")
+                para([(50.4, a)], color=RED, extra=(b, BLUE))
             blank()
     para([(L, "Page 2 of 2")])
     doc.save(out)
@@ -681,7 +1239,7 @@ def main():
     if d["importer"]["company"].upper() not in cfg["customers"]:
         warn.append(f"No email on file for importer '{d['importer']['company']}'")
     for it in d["items"]:
-        if it["part"].upper() not in cfg["parts"]:
+        if not find_part(cfg, it["part"]):
             warn.append(f"No metal-content data for part '{it['part']}' -- page 2 is incomplete, add it to CONFIG")
     render_docx(d, cfg, a.out_pdf, aci) if a.out_pdf.lower().endswith(".docx") else render(d, cfg, a.out_pdf, aci)
     if a.docx: render_docx(d, cfg, a.docx, aci)
