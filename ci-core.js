@@ -104,6 +104,14 @@
     d.comments = (g(/Comments:\s*\n([\s\S]*?)Tracking Numbers/).match(/^\d\).*$/gm) || []);
     d.tracking = g(/Tracking Numbers:\s*([\d ,]+)/).split(/[\s,]+/).filter(Boolean);
     d.sig_date = g(/Signature of shipper:.*?(\d{1,2}\/\d{1,2}\/\d{4})/);
+    // "Air Waybill Nbr" (when FedEx includes it) is the ACI number. Value on the same line or the line below.
+    d.awb = '';
+    const ai = ls.findIndex(l => /air\s*way\s*bill/i.test(l.text));
+    if (ai >= 0) {
+      const after = ls[ai].text.replace(/^.*?air\s*way\s*bill\s*(?:nbr|no|number|#)?\.?\s*:?/i, '');
+      const pick = t => { const m = String(t).match(/\b\d{4}[ -]\d{4}[ -]\d{4}\b|\b\d{9,15}\b/); return m ? m[0].replace(/[\s-]/g, '') : ''; };
+      d.awb = pick(after) || (ls[ai + 1] ? pick(ls[ai + 1].text) : '');
+    }
     return d;
   }
 

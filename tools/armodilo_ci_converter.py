@@ -901,6 +901,13 @@ def parse(pdf_path):
     d["comments"] = re.findall(r"^\d\).*$", g(r"Comments:\s*\n(.*?)Tracking Numbers", ), re.M)
     d["tracking"] = g(r"Tracking Numbers:\s*([\d ,]+)").split()
     d["sig_date"] = g(r"Signature of shipper:.*?(\d{1,2}/\d{1,2}/\d{4})")
+    # "Air Waybill Nbr" (when present) is the ACI number: same line or the line below
+    d["awb"] = ""
+    ai = next((i for i, l in enumerate(ls) if re.search(r"air\s*way\s*bill", l["text"], re.I)), None)
+    if ai is not None:
+        pick = lambda t: (lambda m: re.sub(r"[\s-]", "", m.group(0)) if m else "")(re.search(r"\b\d{4}[ -]\d{4}[ -]\d{4}\b|\b\d{9,15}\b", t))
+        after = re.sub(r"(?i)^.*?air\s*way\s*bill\s*(?:nbr|no|number|#)?\.?\s*:?", "", ls[ai]["text"])
+        d["awb"] = pick(after) or (pick(ls[ai + 1]["text"]) if ai + 1 < len(ls) else "")
     return d
 
 # ---------------------------------------------------------------- rendering
@@ -1355,9 +1362,9 @@ def main():
     a = ap.parse_args()
     cfg = json.load(open(a.config)) if a.config else CONFIG
     d = parse(a.fedex_pdf)
-    aci = a.aci or (d["tracking"][0] if d["tracking"] else "XXXXXXXXXXXX")
+    aci = a.aci or d.get("awb") or (d["tracking"][0] if d["tracking"] else "XXXXXXXXXXXX")
     warn = []
-    if not a.aci: warn.append(f"ACI number defaulted to tracking number {aci}")
+    if not a.aci and not d.get("awb"): warn.append(f"ACI number defaulted to tracking number {aci} (no Air Waybill Nbr on the file)")
     if d["importer"]["company"].upper() not in cfg["customers"]:
         warn.append(f"No email on file for importer '{d['importer']['company']}'")
     for it in d["items"]:

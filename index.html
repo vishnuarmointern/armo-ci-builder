@@ -95,7 +95,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-20e · <span id="pc"></span></p>
+      <p class="ver" id="ver">Version 2026-10-20f · <span id="pc"></span></p>
     </div>
   </header>
 
@@ -115,7 +115,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
         <p class="step"><span>2</span>Check the details</p>
         <label for="aci">ACI number</label>
         <input type="text" id="aci" inputmode="numeric" placeholder="Fills in from the tracking number" disabled>
-        <p class="hint">Defaults to the tracking number. Change it if FedEx gave a different one.</p>
+        <p class="hint" id="aciHint">Uses the Air Waybill Nbr if the file has one, otherwise the tracking number.</p>
         <label for="email">Importer email</label>
         <input type="email" id="email" placeholder="Optional" disabled>
         <p class="hint">Shown on the importer ID/EIN line. Saved customers fill in automatically.</p>
@@ -145,9 +145,9 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=2026-10-20e"></script>
-<script src="assets.js?v=2026-10-20e"></script>
-<script src="ci-core.js?v=2026-10-20e"></script>
+<script src="config.js?v=2026-10-20f"></script>
+<script src="assets.js?v=2026-10-20f"></script>
+<script src="ci-core.js?v=2026-10-20f"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
 (function(){
@@ -176,7 +176,8 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
         : await ArmodiloCI.extractLines(pdfjsLib, buf);
       parsed = ArmodiloCI.parse(lines);
       const cust = CONFIG.customers[(parsed.importer.company || '').toUpperCase()] || {};
-      $('aci').value = parsed.tracking[0] || '';
+      $('aci').value = parsed.awb || parsed.tracking[0] || '';
+      $('aciHint').textContent = parsed.awb ? 'Filled in from the Air Waybill Nbr on the FedEx file.' : 'No Air Waybill Nbr on the file, so this is the tracking number. Change it if FedEx gave a different one.';
       $('email').value = cust.email || '';
       parsed.items.forEach(it => { const m = ArmodiloCI.matchPart(CONFIG, it.part, it.desc); it.metal_key = m.key || ''; it.metal_how = m.how || ''; });
       renderMetal();
