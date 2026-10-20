@@ -32,7 +32,7 @@ In `config.js`, under `"customers"`, add the company name exactly as it appears 
 ```
 
 ## Part numbers included
-ALUR-14, ALUR-16, CURVE, FLOOR, FPC, KBT-02, KEYO, REVOLVE, SPHERE, SURFACE, TILT, VESA, VESA ADAPTER, WALL.
+ALUR-14, ALUR-16, CURVE, FLOOR, FPC, KBT-02, KEYO, REVOLVE, SPHERE, SURFACE, TABLET FIT KIT, TILT, VESA, VESA ADAPTER, WALL.
 
 ## Adding a part number
 Under `"parts"` in `config.js`, copy an existing block (for example `"SPHERE"`), rename it to the new part number, and change the title and component values. The field guide is at the top of `config.js`.

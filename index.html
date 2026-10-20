@@ -95,7 +95,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-20f · <span id="pc"></span></p>
+      <p class="ver" id="ver">Version 2026-10-20g · <span id="pc"></span></p>
     </div>
   </header>
 
@@ -145,11 +145,12 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=2026-10-20f"></script>
-<script src="assets.js?v=2026-10-20f"></script>
-<script src="ci-core.js?v=2026-10-20f"></script>
+<script src="config.js?v=2026-10-20g"></script>
+<script src="assets.js?v=2026-10-20g"></script>
+<script src="ci-core.js?v=2026-10-20g"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
+const CONFIG_VERSION = '2026-10-20g';   // the config.js this page expects
 (function(){
   const $ = id => document.getElementById(id);
   $('hdrLogo').src = 'data:image/png;base64,' + LOGO_B64;
@@ -248,7 +249,7 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
     const w = ArmodiloCI.warnings(parsed, CONFIG, $('email').value.trim());
     if (!$('aci').value.trim()) w.unshift('The ACI number is empty.');
     const nParts = Object.keys(CONFIG.parts || {}).length, oldFmt = Object.values(CONFIG.parts || {}).some(p => !p.title);
-    if (oldFmt || nParts < 14) w.unshift(`config.js looks out of date (${nParts} part${nParts === 1 ? '' : 's'} loaded). Upload the latest config.js to GitHub.`);
+    if (oldFmt || CONFIG.version !== CONFIG_VERSION) w.unshift(`config.js is out of date (version ${CONFIG.version || 'unknown'}, ${nParts} parts). Upload the latest config.js to GitHub.`);
     $('warn').innerHTML = w.length ? '<div class="warn"><strong>Worth checking</strong><ul>' + w.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '';
   }
   const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -299,7 +300,7 @@ const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B
       const p = ArmodiloCI.partFor(CONFIG, it);
       if (!p) { h2.push(`<div class="red" style="font-weight:700">Line ${n + 1}: ${escapeHtml(it.part + ' ' + it.desc)} -- METAL CONTENT TO BE ADDED</div><div class="r"></div>`); return; }
       const [t1, t2] = splitP(`Line ${n + 1}: ${p.title}`);
-      h2.push(`<div class="red" style="font-weight:700">${escapeHtml(t1)}${t2 ? '&nbsp; ' + blue(t2.trim()) : ''}</div><div class="r"></div>`);
+      h2.push(`<div class="red" style="font-weight:700${p.title_color === 'black' ? ';color:#000' : ''}">${escapeHtml(t1)}${t2 ? '&nbsp; ' + blue(t2.trim()) : ''}</div><div class="r"></div>`);
       const q = parseFloat(it.qty) || 1;
       p.components.forEach(c => {
         ArmodiloCI.componentFields(c, q).forEach(x => h2.push(

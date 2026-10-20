@@ -5,6 +5,7 @@
 
    Each part has:
      title       - text after "Line 1: " on page 2
+     title_color - optional "black" (used for the plastic Tablet Fit Kit, which has no metal)
      components  - one block per metal component. Fields:
        name, note       optional: "Component: <name> (<note>)"
        hs, qty          optional: "H.S. Code:" and "Quantity:" lines
@@ -100,7 +101,7 @@ window.CONFIG = {
       ],
       "item": {
         "part": "ALUR - 14",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 899.99,
         "desc": "ALUR Tablet Kiosk 14"
       }
@@ -165,7 +166,7 @@ window.CONFIG = {
       ],
       "item": {
         "part": "ALUR - 16",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 999.99,
         "desc": "ALUR Tablet Kiosk 16"
       }
@@ -188,7 +189,7 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “F” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -212,13 +213,13 @@ window.CONFIG = {
           "reference": "Henan.pdf",
           "name": "Curve Base",
           "note": "Item “B” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "CURVE",
-        "hs": "9403.20.90",
+        "hs": "8473.30.5100",
         "unit_value": 249.99,
         "desc": "Curve - Desktop Tablet Display Stand"
       }
@@ -240,13 +241,13 @@ window.CONFIG = {
           ],
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "FPC",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 100.0,
         "desc": "Faceplate Cover"
       }
@@ -269,7 +270,7 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “F” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -293,7 +294,7 @@ window.CONFIG = {
           "reference": "Hydro.pdf",
           "name": "Aluminum Tube",
           "note": "Item “B” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -317,13 +318,13 @@ window.CONFIG = {
           "reference": "Henan.pdf",
           "name": "Base Plate",
           "note": "Item “C” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "FLOOR",
-        "hs": "9403.20.90",
+        "hs": "8473.30.5100",
         "unit_value": 449.99,
         "desc": "Freestanding Tablet Display Stand"
       }
@@ -351,13 +352,13 @@ window.CONFIG = {
           ],
           "reference": "Henan.pdf",
           "name": "Keyboard Tray",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "KBT-02",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 49.99,
         "desc": "Keyboard Tray"
       }
@@ -380,7 +381,7 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “F” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -404,13 +405,13 @@ window.CONFIG = {
           "reference": "BTS.pdf (page 3)",
           "name": "Box",
           "note": "Item “G” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "KEYO",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 224.99,
         "desc": "Wall Mounted Tablet Display Stand"
       }
@@ -432,7 +433,7 @@ window.CONFIG = {
           ],
           "reference": "SDI.pdf",
           "name": "Revolve Top",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -455,13 +456,13 @@ window.CONFIG = {
           ],
           "reference": "CBM.pdf",
           "name": "Revolve Base",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "REVOLVE",
-        "hs": "9403.70.8020",
+        "hs": "8473.30.5100",
         "unit_value": 99.0,
         "desc": "Revolve Pivot Add-on"
       }
@@ -484,7 +485,7 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “F” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -500,13 +501,13 @@ window.CONFIG = {
           "reference": "STELCO.pdf",
           "name": "Steel Base",
           "note": "Bottom of Item “B” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "SPHERE",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 256.75,
         "desc": "Desktop Tablet Display Stand"
       }
@@ -529,7 +530,7 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “F” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -553,13 +554,13 @@ window.CONFIG = {
           "reference": "CanArt.pdf",
           "name": "Surface Tube",
           "note": "Item “B” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "SURFACE",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 294.99,
         "desc": "Surface Mount Tablet Display Stand"
       }
@@ -582,7 +583,7 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “D” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -606,13 +607,13 @@ window.CONFIG = {
           "reference": "Almag CA.pdf",
           "name": "Tilt Tube",
           "note": "Between Items “E” and Item “F” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "TILT",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 224.99,
         "desc": "Wall Mount Tablet Display Stand"
       }
@@ -635,7 +636,7 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “D” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         },
         {
@@ -659,13 +660,13 @@ window.CONFIG = {
           "reference": "Almag.pdf",
           "name": "Wall Tube",
           "note": "Item “E” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "WALL",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 249.0,
         "desc": "Wall Mount Tablet Display Stand"
       }
@@ -686,13 +687,13 @@ window.CONFIG = {
             ]
           ],
           "reference": "SDI.pdf",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "VESA ADAPTER",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 29.0,
         "desc": "Vesa Adapter for 75 and 100"
       }
@@ -715,15 +716,26 @@ window.CONFIG = {
           "reference": "SDI.pdf",
           "name": "Faceplate Cover",
           "note": "Item “D” in attached document",
-          "hs": "9403.20.0050",
+          "hs": "8473.30.5100",
           "qty": 1
         }
       ],
       "item": {
         "part": "VESA",
-        "hs": "9403.20.0050",
+        "hs": "8473.30.5100",
         "unit_value": 100.0,
         "desc": "Wall Mounted Tablet Display Stand"
+      }
+    },
+    "TABLET FIT KIT": {
+      "title": "Tablet Fit Kit - Plastic",
+      "title_color": "black",
+      "components": [],
+      "item": {
+        "part": "TABLET FIT KIT",
+        "hs": "8473.30.5100",
+        "unit_value": 54.99,
+        "desc": "Tablet Fit Kit - PLASTIC"
       }
     }
   }

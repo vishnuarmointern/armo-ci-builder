@@ -331,7 +331,7 @@
       if (!p) { P.push(para([[L, `Line ${n + 1}: ${it.part} ${it.desc} -- METAL CONTENT TO BE ADDED`]], { b: true, color: RED })); blank(); return; }
       const q = parseFloat(it.qty) || 1;
       const [t1, t2] = splitParen(`Line ${n + 1}: ${p.title}`);
-      P.push(para([[L, t1]], { b: true, color: RED, raw: t2 ? run(' ' + t2, { b: true, color: BLUE }) : '' }));
+      P.push(para([[L, t1]], { b: true, color: p.title_color === 'black' ? '000000' : RED, raw: t2 ? run(' ' + t2, { b: true, color: BLUE }) : '' }));
       blank();
       for (const c of p.components) {
         componentFields(c, q).forEach(x => P.push(para([], {
@@ -451,7 +451,7 @@
       if (!p) { t(L, y, `Line ${n + 1}: ${it.part} ${it.desc} -- METAL CONTENT TO BE ADDED`, { b: true, color: RED }); y += LH * 2; return; }
       const q = parseFloat(it.qty) || 1;
       const [t1, t2] = splitParen(`Line ${n + 1}: ${p.title}`);
-      t(L, y, t1, { b: true, color: RED });
+      t(L, y, t1, { b: true, color: p.title_color === 'black' ? BLACK : RED });
       if (t2) t(L + width(t1 + '  ', true), y, t2.trim(), { b: true, color: BLUE });
       y += LH * 2;
       for (const c of p.components) {
