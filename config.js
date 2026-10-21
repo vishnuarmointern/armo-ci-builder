@@ -3,6 +3,9 @@
    Customer keys are the company name in CAPITALS as it appears on the FedEx invoice.
    Part keys match the FedEx "Part Nbr" (capitals and spaces are ignored, so "ALUR - 14" matches "ALUR-14").
 
+   breakdown_url - the Google Doc's Apps Script link (ends in /exec). When set, the page reads the
+                   Material Breakdown Doc every time it opens; parts below are the fallback.
+
    Each part has:
      title       - text after "Line 1: " on page 2
      title_color - optional "black" (used for the plastic Tablet Fit Kit, which has no metal)
@@ -20,6 +23,8 @@
      item        - defaults used when you add this product as an extra line
                    (part number, HS code, unit value in US$, description) */
 window.CONFIG = {
+  "version": "2026-10-21a",
+  "breakdown_url": "https://script.google.com/macros/s/AKfycbxeHnpHqSgH2aBnbZHycKP3XvCLJLLZuPnT7OODBty5QT4xEF5awCECXbJ2ypnV8ACj/exec",
   "shipper": {
     "lines": [
       "SHIPPING@ARMODILO.COM",
