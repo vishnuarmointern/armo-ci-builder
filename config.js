@@ -23,7 +23,7 @@
      item        - defaults used when you add this product as an extra line
                    (part number, HS code, unit value in US$, description) */
 window.CONFIG = {
-  "version": "2026-10-21a",
+  "version": "2026-10-21b",
   "breakdown_url": "https://script.google.com/macros/s/AKfycbxeHnpHqSgH2aBnbZHycKP3XvCLJLLZuPnT7OODBty5QT4xEF5awCECXbJ2ypnV8ACj/exec",
   "shipper": {
     "lines": [

@@ -93,6 +93,14 @@
         desc: g(/Desc:\s*(.*)$/)
       });
     });
+    // lines FedEx puts between the products and the totals, e.g. "Following Repair/Processing"
+    d.notes = [];
+    const lastItem = ls.map(l => l.text).reduce((a, t, i) => t.startsWith('Part Nbr:') ? i : a, -1);
+    const totalsAt = ls.findIndex(l => /^Total Shipment/.test(l.text));
+    if (lastItem >= 0 && totalsAt > lastItem) {
+      let k = lastItem; while (k < totalsAt && !isRule(ls[k])) k++;
+      for (k++; k < totalsAt; k++) if (!isRule(ls[k]) && ls[k].text.trim()) d.notes.push(ls[k].text.trim());
+    }
     const g = (re, def = '') => { const m = txt.match(re); return m ? m[1].trim() : def; };
     d.total_weight = g(/Total Shipment\s+([\d.]+)/);
     d.total_commodity = g(/Total Commodity\s*\n?([\d.,]+)/);
@@ -127,7 +135,28 @@
 
   /* Returns { key, how } for a confident match, or { key: null, options: [...], reason } when the
      user has to choose. Order: exact part number -> same product family, picked by size -> none. */
+  // description match: FedEx "Desc:" vs a product's page-2 title (without its leading code and bracketed note)
+  // or its saved description. Only used when it points to exactly one product.
+  const words = t => String(t || '').toLowerCase().replace(/\(.*?\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+  const titleCore = p => { const t = String(p.title || '').replace(/\s*\(.*$/, ''); return t.replace(/^(?:[A-Z0-9\/&-]+\s+)+(?=[A-Za-z])/, m => /[a-z]/.test(t) && m.trim() !== t.trim() ? '' : m); };
+  function byDescription(cfg, keys, desc) {
+    const d = words(desc);
+    if (!d) return [];
+    return keys.filter(k => { const p = cfg.parts[k]; return [words(titleCore(p)), words(p.title), words(p.item && p.item.desc)].includes(d); });
+  }
   function matchPart(cfg, part, desc) {
+    const m = matchPartCore(cfg, part, desc);
+    if (m.key) return m;
+    const keys = Object.keys(cfg.parts || {});
+    const hits = byDescription(cfg, keys, desc);
+    // prefer products from the same family as the part number ("ON/OFF-BA-01" -> ON...), else any single hit
+    const fam = family(part), inFam = hits.filter(k => family(k) === fam);
+    const pick = inFam.length === 1 ? inFam[0] : (hits.length === 1 ? hits[0] : null);
+    if (pick) return { key: pick, how: 'the description on the invoice' };
+    if (hits.length > 1) return { key: null, options: hits, reason: `the description matches more than one product (${hits.join(', ')})` };
+    return m;
+  }
+  function matchPartCore(cfg, part, desc) {
     const keys = Object.keys(cfg.parts || {});
     const n = norm(part);
     const exact = keys.find(k => norm(k) === n);
@@ -187,6 +216,109 @@
   // plain "Label: value (note)" lines (used for checks)
   const componentRows = (c, q) => componentFields(c, q).map(x => `${x.label}: ${x.value}${x.note ? ' ' + x.note : ''}`);
   const VALUE_X = 198;   // where the answers line up on page 2 (pt from page edge)
+
+
+  // ---------- live material breakdown from the Google Doc ----------
+  /* raw = { paragraphs: [{ runs: [{t, b, c}], img: [{mime, data, w, h}] }] } as sent by the Doc's Apps Script.
+     Returns { parts, items, problems }: parts in the same shape as config.js, items = per-product defaults. */
+  function parseBreakdown(raw) {
+    const P = (raw && raw.paragraphs) || [];
+    const txt = p => (p.runs || []).map(r => r.t).join('');
+    const isBlue = c => /^#?0000ff$/i.test(c || '');
+    const sectionRe = /^\s*(?:Part\s*)?Nbr\s*:\s*(.*?)\s*Marks\/Nbrs/i;
+    const endRe = /^\s*(?:Page \d+ of \d+|Line \d+ of \d+|FILES TO ATTACH|Simplified Version|[-\u2014_]{10,})/i;
+    const parts = {}, items = {}, problems = [];
+    let sec = null, block = null, comp = null, blocksInSection = 0;
+    const num = s => { const m = String(s).replace(/,/g, '').match(/-?\d*\.?\d+/); return m ? parseFloat(m[0]) : NaN; };
+    const finishComp = () => { if (block && comp && Object.keys(comp).length) block.components.push(comp); comp = null; };
+    const finishBlock = () => {
+      finishComp();
+      if (!block || block.pending) { block = null; return; }
+      const b = block; block = null;
+      const bad = b.components.filter(c => !c.material || isNaN(c.value) || !c.weight || isNaN(num(c.weight)));
+      if (bad.length) { problems.push(`${b.key}: ${bad.length} component${bad.length > 1 ? 's are' : ' is'} missing a material, value or weight`); return; }
+      if (parts[b.key]) return;                      // first one wins (the Doc repeats WALL)
+      parts[b.key] = { title: b.title, title_color: b.color, components: b.components, images: b.images, source: 'doc' };
+    };
+    const capsKey = t => { const w = []; for (const x of t.split(/\s+/)) { if (/^[A-Z0-9\/&-]+$/.test(x) && /[A-Z]/.test(x)) w.push(x); else break; } return w.join(' '); };
+    for (const p of P) {
+      const t = txt(p).replace(/\u00a0/g, ' '), tt = t.trim();
+      const sm = t.match(sectionRe);
+      if (sm) {
+        finishBlock();
+        sec = { key: sm[1].replace(/\s+/g, ' ').trim() }; blocksInSection = 0;
+        items[sec.key] = { part: sec.key };
+        continue;
+      }
+      if (sec && !block) {                            // product header lines
+        let m;
+        if ((m = t.match(/HS Code:\s*([\d.]+)/i))) items[sec.key].hs = m[1];
+        if ((m = tt.match(/^(\d+\.\d{4,})$/))) items[sec.key].unit_value = parseFloat(m[1]);
+        if ((m = t.match(/^\s*Desc:\s*(.*)$/i))) items[sec.key].desc = m[1].replace(/\s*\(?\*.*$/, '').replace(/\s*\(\s*Diagram.*$/i, '').replace(/\s+/g, ' ').trim();
+      }
+      if (/^metal content$/i.test(tt)) { finishBlock(); block = { pending: true }; continue; }
+      const lm = tt.match(/^Line \d+:\s*(.*)$/i);
+      if (lm && sec && !/^Line \d+ of/i.test(tt) && (!block || block.pending)) {
+        finishBlock();
+        const runs = p.runs || [];
+        const main = runs.filter(r => !isBlue(r.c)).map(r => r.t).join('').replace(/^\s*Line \d+:\s*/i, '').replace(/\s+/g, ' ').trim();
+        const note = runs.filter(r => isBlue(r.c)).map(r => r.t).join('').replace(/\s+/g, ' ').trim();
+        const first = runs.find(r => r.t.trim()) || {};
+        const color = /^#?000000$/.test(first.c || '#ff0000') ? 'black' : 'red';
+        const key = blocksInSection === 0 ? sec.key : (capsKey(main) || sec.key);
+        blocksInSection++;
+        block = { key, title: note ? `${main} ${note}` : main, color, components: [], images: [] };
+        continue;
+      }
+      if (!block || block.pending) { if (p.img && p.img.length && block && !block.pending) block.images.push(...p.img); continue; }
+      if (endRe.test(tt) || /^Line \d+ of \d+/i.test(tt)) { finishBlock(); continue; }
+      if (p.img && p.img.length) block.images.push(...p.img);
+      if (!tt) { finishComp(); continue; }
+      const i = t.indexOf(':');
+      if (i < 0) continue;
+      const label = t.slice(0, i).replace(/\s+/g, ' ').trim();
+      // value = text after the colon; blue runs inside it are the bracketed note
+      let pos = 0, val = '', note = '';
+      for (const r of p.runs || []) {
+        const s0 = pos, s1 = pos + r.t.length; pos = s1;
+        const part = s1 <= i + 1 ? '' : r.t.slice(Math.max(0, i + 1 - s0));
+        if (isBlue(r.c)) note += part; else val += part;
+      }
+      val = val.replace(/\s+/g, ' ').trim(); note = note.replace(/\s+/g, ' ').trim();
+      comp = comp || {};
+      const L = label.toLowerCase();
+      if (L === 'component') { if (comp.name || comp.material) { finishComp(); comp = {}; } comp.name = val; if (note) comp.note = note.replace(/^\(|\)$/g, ''); }
+      else if (L === 'h.s. code' || L === 'hs code') comp.hs = val;
+      else if (L === 'quantity') comp.qty = num(val);
+      else if (L === 'material') { if (comp.material) { finishComp(); comp = {}; } comp.material = val; }
+      else if (/total (component )?value/i.test(label)) { comp.value = num(val); if (/component/i.test(label)) comp.value_label = label; }
+      else if (/total (component )?weight/i.test(label)) {
+        const wm = val.match(/^(-?\d*\.?\d+)\s*kg\s*(.*)$/i);
+        comp.weight = wm ? wm[1] : val; if (wm && wm[2].trim()) comp.weight_suffix = wm[2].replace(/\s+/g, ' ').trim();
+        if (/component/i.test(label)) comp.weight_label = label;
+      }
+      else if (L === 'reference') comp.reference = val;
+      else (comp.origin = comp.origin || []).push([label, val]);
+    }
+    finishBlock();
+    Object.values(parts).forEach(p => p.components.forEach(c => { c.origin = c.origin || []; c.reference = c.reference || ''; }));
+    return { parts, items, problems };
+  }
+  // put the Doc's breakdown on top of the built-in one (built-in stays for anything the Doc doesn't cover)
+  function mergeBreakdown(cfg, live) {
+    const parts = Object.assign({}, cfg.parts);
+    for (const [k, p] of Object.entries(live.parts)) {
+      const old = Object.keys(parts).find(x => norm(x) === norm(k));
+      const base = old ? parts[old] : {};
+      if (old && old !== k) delete parts[old];
+      parts[old || k] = Object.assign({}, p, { item: Object.assign({}, base.item || {}, live.items[k] || {}) });
+    }
+    for (const [k, it] of Object.entries(live.items)) {
+      const old = Object.keys(parts).find(x => norm(x) === norm(k));
+      if (old && parts[old].source !== 'doc') parts[old] = Object.assign({}, parts[old], { item: Object.assign({}, parts[old].item || {}, it) });
+    }
+    return Object.assign({}, cfg, { parts });
+  }
 
   // ---------- lines added by hand ----------
   const money = n => (Math.round(n * 100) / 100).toFixed(2);
@@ -259,14 +391,21 @@
   // which page the metal content starts on. With several lines (page numbers in the footer, no closing rule)
   // page 1 is ~682pt plus ~78pt per extra line, and a page holds ~800pt. Metal content starts on a fresh page.
   function metalPage(d) {
-    if (d.items.length <= 1) return 2;
-    return Math.ceil((682 + 78 * (d.items.length - 1)) / 800) + 1;
+    if (d.items.length <= 1 && !(d.notes || []).length) return 2;
+    return Math.ceil((682 + 78 * (d.items.length - 1) + 27 * (d.notes || []).length) / 800) + 1;
   }
+  // fit a picture inside the printable width (and a sensible height), keeping its shape
+  function fitImg(im, maxW = 540, maxH = 420) {
+    let w = im.w || 300, h = im.h || 200;
+    const k = Math.min(1, maxW / w, maxH / h);
+    return { w: w * k, h: h * k };
+  }
+  let MEDIA = [];
   function buildBody(d, cfg, aci, email) {
-    picId = 1;
+    picId = 1; MEDIA = [];
     const RED = 'FF0000', BLUE = '0000FF';
     const P = [];
-    const multi = d.items.length > 1;   // more than one line: page 1 may run onto more pages
+    const multi = d.items.length > 1 || (d.notes || []).length > 0;   // page 1 may run long: page numbers go in the footer
     const blank = () => P.push(para());
     const hr = (k = 'dashed') => { P.push(para([], { rule: k, line: 7 })); P.push(para([], { line: 6.5 })); };
     const cn = d.consignee, im = d.importer;
@@ -305,6 +444,7 @@
       P.push(para([[L, `Desc: ${it.desc}`]]));
       hr();
     }
+    (d.notes || []).forEach(n => { P.push(para([[L, n]])); hr(); });
     P.push(para([[194.9, 'Total Shipment'], [297.1, d.total_weight], [363.8, 'Total Commodity'], [468.8, d.total_commodity]]));
     P.push(para([[230.4, 'Weight:'], [308.5, 'lbs'], [410.2, 'Value:']]));
     for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]])
@@ -333,6 +473,7 @@
       const [t1, t2] = splitParen(`Line ${n + 1}: ${p.title}`);
       P.push(para([[L, t1]], { b: true, color: p.title_color === 'black' ? '000000' : RED, raw: t2 ? run(' ' + t2, { b: true, color: BLUE }) : '' }));
       blank();
+      if (!p.components.length && p.images && p.images.length) { /* plastic parts: title + picture only */ }
       for (const c of p.components) {
         componentFields(c, q).forEach(x => P.push(para([], {
           tabs: [`<w:tab w:val="left" w:pos="${tw(50.4 - L)}"/>`, `<w:tab w:val="left" w:pos="${tw(VALUE_X - L)}"/>`],
@@ -340,6 +481,12 @@
         })));
         blank();
       }
+      (p.images || []).forEach(im => {             // pictures from the Doc, centred
+        const rid = 'rImg' + (MEDIA.length + 1), sz = fitImg(im);
+        MEDIA.push({ rid, ext: /png/i.test(im.mime) ? 'png' : 'jpeg', data: im.data });
+        P.push(para([], { center: '', auto: true, raw: pic(rid, sz.w, sz.h, 'Picture') }));
+        blank();
+      });
     });
     if (!multi) P.push(para([[L, 'Page 2 of 2']]));
     return P.join('');
@@ -347,9 +494,10 @@
 
   async function buildDocx(JSZip, d, cfg, aci, email, logoB64, sigB64) {
     const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const bodyXml = buildBody(withTotals(d), cfg, aci, email);
     const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
       `<w:document xmlns:w="${W}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">` +
-      `<w:body>${buildBody(withTotals(d), cfg, aci, email)}<w:sectPr>${d.items.length > 1 ? '<w:footerReference w:type="default" r:id="rFoot"/>' : ''}<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="320" w:right="288" w:bottom="400" w:left="288" w:header="0" w:footer="200" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+      `<w:body>${bodyXml}<w:sectPr>${(d.items.length > 1 || (d.notes || []).length) ? '<w:footerReference w:type="default" r:id="rFoot"/>' : ''}<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="320" w:right="288" w:bottom="400" w:left="288" w:header="0" w:footer="200" w:gutter="0"/></w:sectPr></w:body></w:document>`;
     const fld = code => `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
     const footer = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="${W}"><w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr>${run('Page ')}${fld('PAGE')}${run(' of ')}${fld('NUMPAGES')}</w:p></w:ftr>`;
     const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr>` +
@@ -358,20 +506,22 @@
       `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>`;
     const z = new JSZip();
     z.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
-      `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>` +
+      `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/>` +
       `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
       `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
-      (d.items.length > 1 ? `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>` : '') + `</Types>`);
+      ((d.items.length > 1 || (d.notes || []).length) ? `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>` : '') + `</Types>`);
     z.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
       `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
     z.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
       `<Relationship Id="rStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
       `<Relationship Id="rLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.png"/>` +
       `<Relationship Id="rSig" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/signature.png"/>` +
-      `<Relationship Id="rFoot" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>`);
+      `<Relationship Id="rFoot" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>` +
+      MEDIA.map(m => `<Relationship Id="${m.rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${m.rid}.${m.ext}"/>`).join('') + `</Relationships>`);
+    MEDIA.forEach(m => z.file(`word/media/${m.rid}.${m.ext}`, m.data, { base64: true }));
     z.file('word/document.xml', doc);
     z.file('word/styles.xml', styles);
-    if (d.items.length > 1) z.file('word/footer1.xml', footer);
+    if (d.items.length > 1 || (d.notes || []).length) z.file('word/footer1.xml', footer);
     z.file('word/media/logo.png', logoB64, { base64: true });
     z.file('word/media/signature.png', sigB64, { base64: true });
     return z.generateAsync({ type: typeof window === 'undefined' ? 'nodebuffer' : 'blob', compression: 'DEFLATE',
@@ -423,6 +573,7 @@
       y += LH; t(L, y, `Desc: ${it.desc}`);
       y += LH; rule(y); y += LH;
     }
+    (d.notes || []).forEach(n => { room(LH * 2); t(L, y, n); y += LH; rule(y); y += LH; });
     room(LH * 8);
     t(194.9, y, 'Total Shipment'); t(297.1, y, d.total_weight); t(363.8, y, 'Total Commodity'); t(468.8, y, d.total_commodity);
     y += LH; t(230.4, y, 'Weight:'); t(308.5, y, 'lbs'); t(410.2, y, 'Value:');
@@ -465,6 +616,12 @@
         }
         y += LH;
       }
+      (p.images || []).forEach(im => {
+        const sz = fitImg(im);
+        room(sz.h + LH);
+        doc.addImage(`data:${im.mime || 'image/jpeg'};base64,${im.data}`, /png/i.test(im.mime) ? 'PNG' : 'JPEG', (W - sz.w) / 2, y, sz.w, sz.h);
+        y += sz.h + LH;
+      });
     });
     const total = doc.getNumberOfPages();
     // page numbers: like the original when it is a simple 2-page invoice, otherwise in the footer
@@ -493,6 +650,6 @@
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, buildPdf };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, buildPdf, parseBreakdown, mergeBreakdown, fitImg };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);

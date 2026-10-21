@@ -16,6 +16,29 @@ Everything runs in the browser. The PDF is never uploaded anywhere.
 3. Go to **Settings → Pages**, set **Source** to *Deploy from a branch*, choose `main` and `/ (root)`, and save.
 4. After a minute the site is live at `https://<your-username>.github.io/armodilo-ci-builder/`.
 
+## Live material breakdown from the Google Doc
+The page can read the **Material Breakdown** Google Doc every time it opens, so edits to the Doc show up on the next invoice with no uploads. Pictures in a product's Metal Content section are included on page 2.
+
+**One-time setup (about 5 minutes):**
+1. Open the Material Breakdown Doc and go to **Extensions → Apps Script**.
+2. Delete what's in the editor, paste in everything from `apps-script/Code.gs`, and click **Save**.
+3. Click **Deploy → New deployment**. Click the gear next to "Select type" and choose **Web app**.
+4. Set **Execute as: Me** and **Who has access: Anyone**, then click **Deploy**. Approve the permissions Google asks for (it only reads the Doc).
+5. Copy the **Web app URL** (it ends in `/exec`).
+6. In `config.js` on GitHub, paste it between the quotes on the `"breakdown_url"` line and commit.
+
+The header then shows **"Material breakdown: live from the Google Doc."** If the Doc can't be reached, the page uses the last copy it loaded on that computer, or the built-in breakdown, and says so.
+
+**How the Doc needs to be laid out** (it already is, apart from the notes below):
+- Each product starts with its `Part Nbr:` line (`Nbr:` also works).
+- Its page-2 content starts with a `Metal Content` line, then `Line 1: ...` (plastic parts can go straight to `Line 1:`).
+- Fields are written `Label: value`, one per line, with a blank line between components. Blue text becomes the blue note.
+- Pictures go inside that product's section, before `Page 2 of 2`.
+- If a product appears twice, the first one is used.
+- A component missing its material, value or weight is skipped and the built-in breakdown is used for that product (the page shows a warning).
+
+If you change `Code.gs` later, use **Deploy → Manage deployments → edit → Version: New version** so the link stays the same.
+
 ## Files
 | File | What it is |
 |---|---|
@@ -23,6 +46,7 @@ Everything runs in the browser. The PDF is never uploaded anywhere.
 | `ci-core.js` | Reads the FedEx PDF and builds the Word/Google Docs file |
 | `config.js` | Shipper details, customer emails, and part metal content. **Edit this to add customers or parts.** |
 | `assets.js` | Logo and signature images |
+| `apps-script/Code.gs` | Script to paste into the Google Doc so the page can read it live |
 | `tools/armodilo_ci_converter.py` | Command-line version (`python3 armodilo_ci_converter.py FEDEX.pdf OUT.docx --aci 123`) |
 
 ## Adding a customer
