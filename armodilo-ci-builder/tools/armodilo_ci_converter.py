@@ -747,7 +747,7 @@ def _norm(s): return re.sub(r"[^A-Z0-9]", "", str(s or "").upper())
 def _family(s): m = re.match(r"^[A-Z]+", str(s or "").upper().strip()); return m.group(0) if m else ""  # first word: "ALUR TABLET KIOSK 14" -> "ALUR"
 def _size(s): m = re.match(r"^[A-Z]+(\d+)$", _norm(s)); return str(int(m.group(1))) if m else None
 def _sizes_in(t): return [str(int(x)) for x in re.findall(r'(?:^|[^\d.])(\d{2})(?=\s*(?:["\u201d\u2033]|in\b|inch|-?inch|\b))', str(t or ""), re.I)]
-def match_part(cfg, part, desc=""):
+def _match_core(cfg, part, desc=""):
     """Returns (key, how) or (None, reason). Exact part number first, then same product family picked by size."""
     keys = list(cfg["parts"])
     for k in keys:
@@ -766,6 +766,21 @@ def match_part(cfg, part, desc=""):
         if len(hits) == 1: return hits[0], f"size {_size(hits[0])} from the invoice"
         return None, f"invoice doesn't say which {fam} it is (saved: {', '.join(same)})"
     return None, "no saved metal content for this part number"
+def _words(t): return re.sub(r"[^a-z0-9]+", " ", re.sub(r"\(.*?\)", " ", str(t or "").lower())).strip()
+def _title_core(p):
+    t = re.sub(r"\s*\(.*$", "", str(p.get("title", "")))
+    return re.sub(r"^(?:[A-Z0-9/&-]+\s+)+(?=[A-Za-z])", "", t) if re.search(r"[a-z]", t) else t
+def match_part(cfg, part, desc=""):
+    """Part number first; if that's not enough, the invoice description, when it points to exactly one product."""
+    k, how = _match_core(cfg, part, desc)
+    if k: return k, how
+    d = _words(desc)
+    hits = [x for x, p in cfg["parts"].items() if d and d in (_words(_title_core(p)), _words(p.get("title")), _words((p.get("item") or {}).get("desc")))] if d else []
+    fam = [x for x in hits if _family(x) == _family(part)]
+    pick = fam[0] if len(fam) == 1 else (hits[0] if len(hits) == 1 else None)
+    if pick: return pick, "the description on the invoice"
+    if len(hits) > 1: return None, f"the description matches more than one product ({', '.join(hits)})"
+    return None, how
 def find_part(cfg, part, desc=""):
     k, _ = match_part(cfg, part, desc)
     return cfg["parts"][k] if k else None
@@ -902,6 +917,14 @@ def parse(pdf_path):
     d["items"] = items
 
     g = lambda p, default="": (re.search(p, txt, re.S).group(1).strip() if re.search(p, txt, re.S) else default)
+    # lines FedEx puts between the products and the totals, e.g. "Following Repair/Processing"
+    d["notes"] = []
+    last = max([i for i, l in enumerate(ls) if l["text"].startswith("Part Nbr:")], default=-1)
+    tot = next((i for i, l in enumerate(ls) if l["text"].startswith("Total Shipment")), -1)
+    if last >= 0 and tot > last:
+        k = last
+        while k < tot and not is_rule(ls[k]): k += 1
+        d["notes"] = [ls[j]["text"].strip() for j in range(k + 1, tot) if not is_rule(ls[j]) and ls[j]["text"].strip()]
     d["total_weight"] = g(r"Total Shipment\s+([\d.]+)")
     d["total_commodity"] = g(r"Total Commodity\s*\n?([\d.,]+)")
     d["terms"] = g(r"Terms of Sale:\s*\n?(\w+)")
@@ -1007,6 +1030,8 @@ def render(d, cfg, out, aci):
         y += LH; doc.t(302.4, y, it["unit_value"])
         y += LH; doc.t(L, y, f"Desc: {it['desc']}")
         y += LH; doc.rule(y); y += LH
+    for n in d.get("notes", []):
+        doc.t(L, y, n); y += LH; doc.rule(y); y += LH
 
     doc.t(194.9, y, "Total Shipment"); doc.t(297.1, y, d["total_weight"]); doc.t(363.8, y, "Total Commodity"); doc.t(468.8, y, d["total_commodity"])
     y += LH; doc.t(230.4, y, "Weight:"); doc.t(308.5, y, "lbs"); doc.t(410.2, y, "Value:")
@@ -1324,6 +1349,8 @@ def render_docx(d, cfg, out, aci):
         para([(302.4, it["unit_value"])])
         para([(L, f"Desc: {it['desc']}")])
         hr()
+    for n in d.get("notes", []):
+        para([(L, n)]); hr()
     para([(194.9, "Total Shipment"), (297.1, d["total_weight"]), (363.8, "Total Commodity"), (468.8, d["total_commodity"])])
     para([(230.4, "Weight:"), (308.5, "lbs"), (410.2, "Value:")])
     for lab, val in [("Terms of Sale:", d["terms"]), ("Freight:", d["freight"]), ("Insurance:", d["insurance"]), ("Others:", d["others"])]:

@@ -95,7 +95,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-21a · <span id="pc"></span> · <span id="bd">Loading material breakdown…</span></p>
+      <p class="ver" id="ver">Version 2026-10-21b · <span id="pc"></span> · <span id="bd">Loading material breakdown…</span></p>
     </div>
   </header>
 
@@ -145,12 +145,12 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=2026-10-21a"></script>
-<script src="assets.js?v=2026-10-21a"></script>
-<script src="ci-core.js?v=2026-10-21a"></script>
+<script src="config.js?v=2026-10-21b"></script>
+<script src="assets.js?v=2026-10-21b"></script>
+<script src="ci-core.js?v=2026-10-21b"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
-const CONFIG_VERSION = '2026-10-21a';   // the config.js this page expects
+const CONFIG_VERSION = '2026-10-21b';   // the config.js this page expects
 (function(){
   const $ = id => document.getElementById(id);
   $('hdrLogo').src = 'data:image/png;base64,' + LOGO_B64;
@@ -319,6 +319,7 @@ const CONFIG_VERSION = '2026-10-21a';   // the config.js this page expects
       h.push(row([[L,`HS Code: ${it.hs}`],[185.5,`Unit Qty: ${it.qty}`],[252.2,it.uom],[307.2,'Unit Value:'],[402.6,`Commodity Value: ${it.commodity_value}`]]));
       h.push(row([[302.4,it.unit_value]]), row([[L,`Desc: ${it.desc}`]]), '<hr>');
     }
+    (d.notes || []).forEach(n => h.push(row([[L, n]]), '<hr>'));
     h.push(row([[194.9,'Total Shipment'],[297.1,d.total_weight],[363.8,'Total Commodity'],[468.8,d.total_commodity]]));
     h.push(row([[230.4,'Weight:'],[308.5,'lbs'],[410.2,'Value:']]));
     [['Terms of Sale:',d.terms],['Freight:',d.freight],['Insurance:',d.insurance],['Others:',d.others]].forEach(([a,b]) => h.push(row([[410,a,'right'],[482.4,b]])));
@@ -327,7 +328,7 @@ const CONFIG_VERSION = '2026-10-21a';   // the config.js this page expects
     h.push(row([[L,'Tracking Numbers:'],[108,d.tracking.join(', ')]]), '<div class="r"></div>');
     h.push(row([[L,'I declare all information in this invoice to be true and correct.']]));
     h.push(`<div style="position:relative;display:flex;align-items:flex-end;height:34px;white-space:nowrap">Signature of shipper:&nbsp;<img alt="Signature" src="data:image/png;base64,${SIG_B64}" style="width:54px;height:30px;margin-bottom:-4px">&nbsp;SHIPPING@ARMODILO.COM<span style="position:absolute;bottom:0;left:${348-L}px">${escapeHtml(d.sig_date)}</span></div>`);
-    if (d.items.length > 1) h.push('<div class="r"></div>', row([[L,'(Page numbers are in the footer when there is more than one line.)']]));
+    if (d.items.length > 1 || (d.notes || []).length) h.push('<div class="r"></div>', row([[L,'(Page numbers are in the footer on longer invoices.)']]));
     else h.push('<div class="r"></div><hr style="border-top-style:solid"><div class="r"></div>', row([[L,'Page 1 of 2']]));
     // page 2: metal content
     const h2 = ['<div class="c h12 red">Metal Content</div><div class="r"></div>'];
@@ -347,7 +348,7 @@ const CONFIG_VERSION = '2026-10-21a';   // the config.js this page expects
       });
       (p.images || []).forEach(im => { const sz = ArmodiloCI.fitImg(im); h2.push(`<div style="text-align:center;margin:4px 0 14px"><img alt="" style="width:${sz.w}px;height:${sz.h}px" src="data:${im.mime || 'image/jpeg'};base64,${im.data}"></div>`); });
     });
-    if (d.items.length === 1) h2.push(row([[L, 'Page 2 of 2']]));
+    if (d.items.length === 1 && !(d.notes || []).length) h2.push(row([[L, 'Page 2 of 2']]));
     $('stage').innerHTML = '<div class="sheet">' + h.join('') + '</div><div class="sheet" style="margin-top:20px">' + h2.join('') + '</div>';
     $('previewLabel').textContent = 'Preview of both pages.';
   }
