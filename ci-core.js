@@ -388,12 +388,26 @@
     return `<w:p>${ppr ? `<w:pPr>${ppr}</w:pPr>` : ''}${body}</w:p>`;
   }
 
-  // which page the metal content starts on. With several lines (page numbers in the footer, no closing rule)
-  // page 1 is ~682pt plus ~78pt per extra line, and a page holds ~800pt. Metal content starts on a fresh page.
-  function metalPage(d) {
-    if (d.items.length <= 1 && !(d.notes || []).length) return 2;
-    return Math.ceil((682 + 78 * (d.items.length - 1) + 27 * (d.notes || []).length) / 800) + 1;
+  // page estimates for the Word file (the PDF counts exactly). Heights in points, measured on real output.
+  const P1_CAP = 750, P2_CAP = 742;
+  function p1Pages(d) {
+    const n = (d.notes || []).length, k = d.items.length;
+    const h = 722 + 78 * (k - 1) + 27 * n - (n ? 13.5 : 0);
+    return Math.max(1, Math.ceil(h / P1_CAP));
   }
+  function metalHeight(d, cfg) {
+    let h = 16.8 + 13.5;
+    d.items.forEach(it => {
+      const p = partFor(cfg, it);
+      h += 27;
+      if (!p) return;
+      p.components.forEach(c => { h += 13.5 * (componentFields(c, 1).length + 1); });
+      (p.images || []).forEach(im => { h += fitImg(im).h + 13.5 + 4; });
+    });
+    return h + 13.5;
+  }
+  const metalPage = d => p1Pages(d) + 1;
+  function totalPages(d, cfg) { return p1Pages(d) + Math.max(1, Math.ceil(metalHeight(d, cfg) / P2_CAP)); }
   // fit a picture inside the printable width (and a sensible height), keeping its shape
   function fitImg(im, maxW = 540, maxH = 420) {
     let w = im.w || 300, h = im.h || 200;
@@ -405,7 +419,7 @@
     picId = 1; MEDIA = [];
     const RED = 'FF0000', BLUE = '0000FF';
     const P = [];
-    const multi = d.items.length > 1 || (d.notes || []).length > 0;   // page 1 may run long: page numbers go in the footer
+    const P1 = p1Pages(d), NP = totalPages(d, cfg);   // page labels like the original: "Page 1 of 2"
     const blank = () => P.push(para());
     const hr = (k = 'dashed') => { P.push(para([], { rule: k, line: 7 })); P.push(para([], { line: 6.5 })); };
     const cn = d.consignee, im = d.importer;
@@ -450,7 +464,7 @@
     for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]])
       P.push(para([[410, lab, 'right'], [482.4, val]]));
     P.push(para([[410, 'Total Invoice Value:', 'right'], [452, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice]]));
-    blank();
+    if (!(d.notes || []).length) blank();
     P.push(para([[L, 'Comments:']]));
     d.comments.forEach(c => P.push(para([[L, c]])));
     P.push(para([[L, 'Tracking Numbers:'], [108, d.tracking.join(', ')]]));
@@ -461,7 +475,7 @@
       auto: true, tabs: [`<w:tab w:val="left" w:pos="${tw(348 - L)}"/>`],
       raw: run('Signature of shipper: ') + pic('rSig', SIG.w, SIG.h, 'Signature') + run(' SHIPPING@ARMODILO.COM') + TAB + run(d.sig_date)
     }));
-    if (!multi) { blank(); hr('single'); blank(); P.push(para([[L, 'Page 1 of 2']])); }   // with several lines, page numbers go in the footer
+    blank(); hr('single'); blank(); P.push(para([[L, `Page ${P1} of ${NP}`]]));
 
     // page 2
     P.push(para([], { center: 'Metal Content', b: true, sz: 12, color: RED, line: 16.8, pageBreak: true }));
@@ -488,7 +502,7 @@
         blank();
       });
     });
-    if (!multi) P.push(para([[L, 'Page 2 of 2']]));
+    P.push(para([[L, `Page ${NP} of ${NP}`]]));
     return P.join('');
   }
 
@@ -497,9 +511,7 @@
     const bodyXml = buildBody(withTotals(d), cfg, aci, email);
     const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
       `<w:document xmlns:w="${W}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">` +
-      `<w:body>${bodyXml}<w:sectPr>${(d.items.length > 1 || (d.notes || []).length) ? '<w:footerReference w:type="default" r:id="rFoot"/>' : ''}<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="320" w:right="288" w:bottom="400" w:left="288" w:header="0" w:footer="200" w:gutter="0"/></w:sectPr></w:body></w:document>`;
-    const fld = code => `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
-    const footer = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="${W}"><w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr>${run('Page ')}${fld('PAGE')}${run(' of ')}${fld('NUMPAGES')}</w:p></w:ftr>`;
+      `<w:body>${bodyXml}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="320" w:right="288" w:bottom="400" w:left="288" w:header="0" w:footer="200" w:gutter="0"/></w:sectPr></w:body></w:document>`;
     const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr>` +
       `<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:rPrDefault>` +
       `<w:pPrDefault><w:pPr><w:spacing w:before="0" w:after="0" w:line="270" w:lineRule="exact"/></w:pPr></w:pPrDefault></w:docDefaults>` +
@@ -509,19 +521,17 @@
       `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/>` +
       `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
       `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
-      ((d.items.length > 1 || (d.notes || []).length) ? `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>` : '') + `</Types>`);
+      `</Types>`);
     z.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
       `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
     z.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
       `<Relationship Id="rStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
       `<Relationship Id="rLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.png"/>` +
       `<Relationship Id="rSig" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/signature.png"/>` +
-      `<Relationship Id="rFoot" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>` +
       MEDIA.map(m => `<Relationship Id="${m.rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${m.rid}.${m.ext}"/>`).join('') + `</Relationships>`);
     MEDIA.forEach(m => z.file(`word/media/${m.rid}.${m.ext}`, m.data, { base64: true }));
     z.file('word/document.xml', doc);
     z.file('word/styles.xml', styles);
-    if (d.items.length > 1 || (d.notes || []).length) z.file('word/footer1.xml', footer);
     z.file('word/media/logo.png', logoB64, { base64: true });
     z.file('word/media/signature.png', sigB64, { base64: true });
     return z.generateAsync({ type: typeof window === 'undefined' ? 'nodebuffer' : 'blob', compression: 'DEFLATE',
@@ -534,7 +544,6 @@
     const d = withTotals(d0);
     const doc = new jsPDF({ unit: 'pt', format: 'letter' });
     const W = 612, PH = 792, BOTTOM = 760, RED = [255, 0, 0], BLUE = [0, 0, 255], BLACK = [0, 0, 0];
-    const multi = d.items.length > 1;
     let y = 0;
     const t = (x, top, s, o = {}) => {
       doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.setFontSize(o.sz || 10); doc.setTextColor(...(o.color || BLACK));
@@ -579,7 +588,7 @@
     y += LH; t(230.4, y, 'Weight:'); t(308.5, y, 'lbs'); t(410.2, y, 'Value:');
     for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]]) { y += LH; t(410, y, lab, { right: true }); t(482.4, y, val); }
     y += LH; t(410, y, 'Total Invoice Value:', { right: true }); t(452, y, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice);
-    y += LH * 2; room(LH * (d.comments.length + 7) + 17);
+    y += (d.notes || []).length ? LH : LH * 2; room(LH * (d.comments.length + 7) + 17);
     t(L, y, 'Comments:');
     d.comments.forEach(c => { y += LH; t(L, y, c); });
     y += LH; t(L, y, 'Tracking Numbers:'); t(108, y, d.tracking.join(', '));
@@ -589,8 +598,8 @@
     t(L, y, lab);
     doc.addImage('data:image/png;base64,' + sigB64, 'PNG', L + lw, y + 9 - SIG.h + 6, SIG.w, SIG.h);
     t(L + lw + SIG.w + 3, y, 'SHIPPING@ARMODILO.COM'); t(348, y, d.sig_date);
-    y += LH * 2; rule(y, true);
-    const p1LabelY = y + LH * 2;
+    y += LH * 2; if (y + LH * 3 > 780) { doc.addPage(); y = 30; } rule(y, true);   // closing rule + page label may sit a little lower
+    const p1LabelY = y + LH * 2, p1Page = doc.getNumberOfPages();
 
     // metal content always starts on a new page
     doc.addPage(); const metalPage = doc.getNumberOfPages();
@@ -623,14 +632,10 @@
         y += sz.h + LH;
       });
     });
-    const total = doc.getNumberOfPages();
-    // page numbers: like the original when it is a simple 2-page invoice, otherwise in the footer
-    if (!multi && total === 2) {
-      doc.setPage(1); t(L, p1LabelY, 'Page 1 of 2');
-      doc.setPage(2); t(L, Math.min(y, BOTTOM), 'Page 2 of 2');
-    } else {
-      for (let i = 1; i <= total; i++) { doc.setPage(i); t(L, PH - 24, `Page ${i} of ${total}`); }
-    }
+    // page labels like the original: under the invoice and under the metal content
+    room(LH); const total = doc.getNumberOfPages();
+    t(L, y, `Page ${total} of ${total}`);
+    doc.setPage(p1Page); t(L, p1LabelY, `Page ${p1Page} of ${total}`);
     doc.setPage(1);
     tc(92.8, `Please see Page ${metalPage} for Steel/Aluminum Content Breakdown`, { sz: 11, color: RED });
     return doc.output('blob');
@@ -650,6 +655,6 @@
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, buildPdf, parseBreakdown, mergeBreakdown, fitImg };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, p1Pages, totalPages, buildPdf, parseBreakdown, mergeBreakdown, fitImg };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);

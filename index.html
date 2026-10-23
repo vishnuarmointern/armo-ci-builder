@@ -68,6 +68,9 @@ button.outline:disabled{border-color:var(--line);background:var(--surface)}
 button.secondary{margin-top:14px;background:transparent;color:var(--ink);border:1.5px dashed var(--steel);font-weight:600}
 button.secondary:hover{border-color:var(--signal);color:var(--signal)}
 button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;font-size:.85rem;font-weight:600;text-decoration:underline}
+.imp{margin-top:14px;border:1px solid var(--line);border-radius:5px;padding:8px 12px}
+.imp summary{cursor:pointer;font-weight:600;font-size:.92rem}
+.imp[open]{padding-bottom:12px}
 .metal-title{font-size:.88rem;font-weight:600;margin:16px 0 0}
 .gdocs{font-size:.86rem;color:var(--muted);margin-top:14px;line-height:1.45}
 /* invoice preview: a sheet of paper, always light, Arial like the real document */
@@ -95,7 +98,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-21b · <span id="pc"></span> · <span id="bd">Loading material breakdown…</span></p>
+      <p class="ver" id="ver">Version 2026-10-23a · <span id="pc"></span> · <span id="bd">Loading material breakdown…</span></p>
     </div>
   </header>
 
@@ -119,6 +122,24 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
         <label for="email">Importer email</label>
         <input type="email" id="email" placeholder="Optional" disabled>
         <p class="hint">Shown on the importer ID/EIN line. Saved customers fill in automatically.</p>
+        <details class="imp" id="impBox">
+          <summary>Edit importer details</summary>
+          <p class="hint">Filled in from the FedEx file. Changes show in the preview and both downloads.</p>
+          <div class="fld"><label for="im_name">Name</label><input type="text" id="im_name" data-im="name" disabled></div>
+          <div class="fld"><label for="im_company">Company</label><input type="text" id="im_company" data-im="company" disabled></div>
+          <div class="fld"><label for="im_street0">Address line 1</label><input type="text" id="im_street0" data-im="street0" disabled></div>
+          <div class="fld"><label for="im_street1">Address line 2</label><input type="text" id="im_street1" data-im="street1" placeholder="Optional" disabled></div>
+          <div class="fields">
+            <div class="fld"><label for="im_city">City</label><input type="text" id="im_city" data-im="city" disabled></div>
+            <div class="fld"><label for="im_state">State / province</label><input type="text" id="im_state" data-im="state" disabled></div>
+            <div class="fld"><label for="im_zip">ZIP / postal code</label><input type="text" id="im_zip" data-im="zip" disabled></div>
+            <div class="fld"><label for="im_country">Country</label><input type="text" id="im_country" data-im="country" disabled></div>
+          </div>
+          <div class="fields">
+            <div class="fld"><label for="im_phone">Phone</label><input type="text" id="im_phone" data-im="phone" disabled></div>
+            <div class="fld"><label for="im_id">ID/EIN</label><input type="text" id="im_id" data-im="id" disabled></div>
+          </div>
+        </details>
         <div id="metal"></div>
         <div id="warn"></div>
       </section>
@@ -145,12 +166,12 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=2026-10-21b"></script>
-<script src="assets.js?v=2026-10-21b"></script>
-<script src="ci-core.js?v=2026-10-21b"></script>
+<script src="config.js?v=2026-10-23a"></script>
+<script src="assets.js?v=2026-10-23a"></script>
+<script src="ci-core.js?v=2026-10-23a"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
-const CONFIG_VERSION = '2026-10-21b';   // the config.js this page expects
+const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
 (function(){
   const $ = id => document.getElementById(id);
   $('hdrLogo').src = 'data:image/png;base64,' + LOGO_B64;
@@ -197,6 +218,14 @@ const CONFIG_VERSION = '2026-10-21b';   // the config.js this page expects
   drop.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) handle(f); });
   input.addEventListener('change', () => { if (input.files[0]) handle(input.files[0]); });
   ['aci','email'].forEach(id => $(id).addEventListener('input', () => { if (parsed) { render(); showWarnings(); } }));
+  document.querySelectorAll('[data-im]').forEach(inp => inp.addEventListener('input', () => {
+    if (!parsed) return;
+    const im = parsed.importer, f = inp.dataset.im, v = inp.value.trim();
+    if (f === 'street0' || f === 'street1') { const s = [document.getElementById('im_street0').value.trim(), document.getElementById('im_street1').value.trim()]; im.street = s.filter(Boolean); }
+    else if (f === 'id') im.id = v || 'n/a';
+    else im[f] = v;
+    render(); showWarnings();
+  }));
 
   function setStatus(msg, cls) { const s = $('status'); s.textContent = msg; s.className = 'status' + (cls ? ' ' + cls : ''); }
 
@@ -216,6 +245,11 @@ const CONFIG_VERSION = '2026-10-21b';   // the config.js this page expects
       $('aciHint').textContent = parsed.awb ? 'Filled in from the Air Waybill Nbr on the FedEx file.' : 'No Air Waybill Nbr on the file, so this is the tracking number. Change it if FedEx gave a different one.';
       $('email').value = cust.email || '';
       parsed.items.forEach(it => { const m = ArmodiloCI.matchPart(CONFIG, it.part, it.desc); it.metal_key = m.key || ''; it.metal_how = m.how || ''; });
+      // importer box: start from the FedEx importer, using the consignee's ID/EIN and phone where FedEx left them blank
+      const im = parsed.importer, cn = parsed.consignee;
+      im.id = im.id || cn.id || 'n/a'; im.phone = im.phone || cn.phone;
+      const imVals = { name: im.name, company: im.company, street0: im.street[0] || '', street1: im.street[1] || '', city: im.city, state: im.state, zip: im.zip, country: im.country, phone: im.phone, id: im.id };
+      document.querySelectorAll('[data-im]').forEach(inp => { inp.value = imVals[inp.dataset.im] || ''; inp.disabled = false; });
       renderMetal();
       $('aci').disabled = $('email').disabled = false;
       $('dl').disabled = $('dlpdf').disabled = false;
@@ -223,6 +257,7 @@ const CONFIG_VERSION = '2026-10-21b';   // the config.js this page expects
       setStatus('Invoice read. Check the preview, then download.', 'ok');
     } catch (e) {
       parsed = null; $('dl').disabled = $('dlpdf').disabled = true; $('metal').innerHTML = '';
+      document.querySelectorAll('[data-im]').forEach(inp => { inp.value = ''; inp.disabled = true; });
       setStatus(e.message || 'Could not read that file.', 'err');
     }
   }
@@ -328,8 +363,8 @@ const CONFIG_VERSION = '2026-10-21b';   // the config.js this page expects
     h.push(row([[L,'Tracking Numbers:'],[108,d.tracking.join(', ')]]), '<div class="r"></div>');
     h.push(row([[L,'I declare all information in this invoice to be true and correct.']]));
     h.push(`<div style="position:relative;display:flex;align-items:flex-end;height:34px;white-space:nowrap">Signature of shipper:&nbsp;<img alt="Signature" src="data:image/png;base64,${SIG_B64}" style="width:54px;height:30px;margin-bottom:-4px">&nbsp;SHIPPING@ARMODILO.COM<span style="position:absolute;bottom:0;left:${348-L}px">${escapeHtml(d.sig_date)}</span></div>`);
-    if (d.items.length > 1 || (d.notes || []).length) h.push('<div class="r"></div>', row([[L,'(Page numbers are in the footer on longer invoices.)']]));
-    else h.push('<div class="r"></div><hr style="border-top-style:solid"><div class="r"></div>', row([[L,'Page 1 of 2']]));
+    const P1 = ArmodiloCI.p1Pages(d), NP = ArmodiloCI.totalPages(d, CONFIG);
+    h.push('<div class="r"></div><hr style="border-top-style:solid"><div class="r"></div>', row([[L, `Page ${P1} of ${NP}`]]));
     // page 2: metal content
     const h2 = ['<div class="c h12 red">Metal Content</div><div class="r"></div>'];
     const blue = t => `<span style="color:#00f">${escapeHtml(t)}</span>`;
@@ -348,7 +383,7 @@ const CONFIG_VERSION = '2026-10-21b';   // the config.js this page expects
       });
       (p.images || []).forEach(im => { const sz = ArmodiloCI.fitImg(im); h2.push(`<div style="text-align:center;margin:4px 0 14px"><img alt="" style="width:${sz.w}px;height:${sz.h}px" src="data:${im.mime || 'image/jpeg'};base64,${im.data}"></div>`); });
     });
-    if (d.items.length === 1 && !(d.notes || []).length) h2.push(row([[L, 'Page 2 of 2']]));
+    h2.push(row([[L, `Page ${NP} of ${NP}`]]));
     $('stage').innerHTML = '<div class="sheet">' + h.join('') + '</div><div class="sheet" style="margin-top:20px">' + h2.join('') + '</div>';
     $('previewLabel').textContent = 'Preview of both pages.';
   }
