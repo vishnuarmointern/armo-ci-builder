@@ -6,7 +6,7 @@ Everything runs in the browser. The PDF is never uploaded anywhere.
 
 ## Use it
 1. Open the site and drop in the FedEx commercial invoice (.txt export or PDF).
-2. Check the ACI number (defaults to the tracking number) and the importer email.
+2. Check the ACI number (read from the number at the start of the file name, e.g. `527617844816 - Customer.txt`) and the importer email. If the FedEx file has an Air Waybill Nbr column, it is printed on the invoice with the ACI number, and can be changed in its own box.
 3. Click **Download for Google Docs (.docx)**, or **Download PDF (.pdf)** for a ready-to-send PDF.
 4. For Google Docs: in Google Drive choose **New → File upload**, then open the file with Google Docs.
 

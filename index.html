@@ -98,7 +98,7 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
     <div>
       <h1>Commercial invoice builder</h1>
       <p>Turn a FedEx commercial invoice into the Armodilo version, ready for Google Docs.</p>
-      <p class="ver" id="ver">Version 2026-10-23a · <span id="pc"></span> · <span id="bd">Loading material breakdown…</span></p>
+      <p class="ver" id="ver">Version 2026-11-09a · <span id="pc"></span> · <span id="bd">Loading material breakdown…</span></p>
     </div>
   </header>
 
@@ -117,8 +117,13 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
       <section>
         <p class="step"><span>2</span>Check the details</p>
         <label for="aci">ACI number</label>
-        <input type="text" id="aci" inputmode="numeric" placeholder="Fills in from the tracking number" disabled>
-        <p class="hint" id="aciHint">Uses the Air Waybill Nbr if the file has one, otherwise the tracking number.</p>
+        <input type="text" id="aci" inputmode="numeric" placeholder="Fills in from the file name" disabled>
+        <p class="hint" id="aciHint">Read from the number at the start of the file name.</p>
+        <div id="awbBox" hidden>
+          <label for="awb">Air Waybill Nbr</label>
+          <input type="text" id="awb" inputmode="numeric" disabled>
+          <p class="hint">The FedEx file has an Air Waybill Nbr, so it's printed on the invoice. It matches the ACI number unless you change it here.</p>
+        </div>
         <label for="email">Importer email</label>
         <input type="email" id="email" placeholder="Optional" disabled>
         <p class="hint">Shown on the importer ID/EIN line. Saved customers fill in automatically.</p>
@@ -166,12 +171,12 @@ button.linkbtn{width:auto;background:none;color:var(--signal);padding:2px 4px;fo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=2026-10-23a"></script>
-<script src="assets.js?v=2026-10-23a"></script>
-<script src="ci-core.js?v=2026-10-23a"></script>
+<script src="config.js?v=2026-11-09a"></script>
+<script src="assets.js?v=2026-11-09a"></script>
+<script src="ci-core.js?v=2026-11-09a"></script>
 <script>
 const CONFIG = window.CONFIG, LOGO_B64 = window.LOGO_B64, SIG_B64 = window.SIG_B64;
-const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
+const CONFIG_VERSION = '2026-11-09a';   // the config.js this page expects
 (function(){
   const $ = id => document.getElementById(id);
   $('hdrLogo').src = 'data:image/png;base64,' + LOGO_B64;
@@ -217,7 +222,10 @@ const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
   ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
   drop.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) handle(f); });
   input.addEventListener('change', () => { if (input.files[0]) handle(input.files[0]); });
-  ['aci','email'].forEach(id => $(id).addEventListener('input', () => { if (parsed) { render(); showWarnings(); } }));
+  ['aci','email'].forEach(id => $(id).addEventListener('input', () => { if (parsed) { if (id === 'aci' && !awbEdited) $('awb').value = $('aci').value; syncAwb(); render(); showWarnings(); } }));
+  let awbEdited = false;   // the Air Waybill box follows the ACI number until someone types in it
+  $('awb').addEventListener('input', () => { awbEdited = true; if (parsed) { syncAwb(); render(); showWarnings(); } });
+  function syncAwb() { if (parsed) parsed.awb_out = parsed.has_awb ? $('awb').value.trim() : undefined; }
   document.querySelectorAll('[data-im]').forEach(inp => inp.addEventListener('input', () => {
     if (!parsed) return;
     const im = parsed.importer, f = inp.dataset.im, v = inp.value.trim();
@@ -241,8 +249,17 @@ const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
         : await ArmodiloCI.extractLines(pdfjsLib, buf);
       parsed = ArmodiloCI.parse(lines);
       const cust = CONFIG.customers[(parsed.importer.company || '').toUpperCase()] || {};
-      $('aci').value = parsed.awb || parsed.tracking[0] || '';
-      $('aciHint').textContent = parsed.awb ? 'Filled in from the Air Waybill Nbr on the FedEx file.' : 'No Air Waybill Nbr on the file, so this is the tracking number. Change it if FedEx gave a different one.';
+      const fromName = ArmodiloCI.aciFromName(file.name);
+      $('aci').value = fromName || parsed.awb || parsed.tracking[0] || '';
+      $('aciHint').textContent = fromName ? 'Read from the file name.'
+        : parsed.awb ? 'No number in the file name, so this is the Air Waybill Nbr from the FedEx file.'
+        : parsed.tracking[0] ? 'No number in the file name, so this is the tracking number. Change it if needed.'
+        : 'No number in the file name. Type the ACI number here.';
+      awbEdited = false;
+      $('awbBox').hidden = !parsed.has_awb;
+      $('awb').value = parsed.has_awb ? $('aci').value : '';
+      $('awb').disabled = !parsed.has_awb;
+      syncAwb();
       $('email').value = cust.email || '';
       parsed.items.forEach(it => { const m = ArmodiloCI.matchPart(CONFIG, it.part, it.desc); it.metal_key = m.key || ''; it.metal_how = m.how || ''; });
       // importer box: start from the FedEx importer, using the consignee's ID/EIN and phone where FedEx left them blank
@@ -257,6 +274,7 @@ const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
       setStatus('Invoice read. Check the preview, then download.', 'ok');
     } catch (e) {
       parsed = null; $('dl').disabled = $('dlpdf').disabled = true; $('metal').innerHTML = '';
+      $('awbBox').hidden = true; $('awb').disabled = true;
       document.querySelectorAll('[data-im]').forEach(inp => { inp.value = ''; inp.disabled = true; });
       setStatus(e.message || 'Could not read that file.', 'err');
     }
@@ -318,6 +336,7 @@ const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
   function showWarnings() {
     const w = ArmodiloCI.warnings(parsed, CONFIG, $('email').value.trim());
     if (!$('aci').value.trim()) w.unshift('The ACI number is empty.');
+    if (parsed && parsed.has_awb && !$('awb').value.trim()) w.unshift('The Air Waybill Nbr is empty, so it will print blank.');
     if (LIVE_NOTE) w.unshift(LIVE_NOTE);
     w.push(...LIVE_PROBLEMS);
     const nParts = Object.keys(CONFIG.parts || {}).length, oldFmt = Object.values(CONFIG.parts || {}).some(p => !p.title);
@@ -336,8 +355,9 @@ const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
     h.push(`<img class="logo" alt="" src="data:image/png;base64,${LOGO_B64}">`);
     h.push(`<div class="c h12">ACI-${escapeHtml($('aci').value.trim())}</div><div class="c h12">Commercial Invoice</div>`);
     h.push(`<div class="c h11 red">Please see Page ${ArmodiloCI.metalPage(d)} for Steel/Aluminum Content Breakdown</div>`);
-    h.push(row([[L,'Invoice Number'],[95.5,'Purpose of Shipment'],[302.7,'Curr'],[355.5,'Ult Dest.']]));
-    h.push(row([[122.4,d.purpose],[300.7,d.currency],[355.1,d.ult_dest]]));
+    const AX = ArmodiloCI.AWB_X, R = ArmodiloCI.AMT_R, awb = d.has_awb ? (d.awb_out || '') : '';
+    h.push(row([[L,'Invoice Number'],[95.5,'Purpose of Shipment'],[302.7,'Curr'],[355.5,'Ult Dest.'],...(d.has_awb?[[AX,'Air Waybill Nbr.']]:[])]));
+    h.push(row([[122.4,d.purpose],[300.7,d.currency],[355.1,d.ult_dest],...(awb?[[AX,awb]]:[])]));
     h.push(row([[L,'Export Dt'],[81.1,'C.I. References'],[275.5,'Pkgs'],[333.8,'Bill T/C']]));
     h.push(row([[L,d.export_date],[86.6,d.ci_ref],[222.8,d.pkg_type],[291.1,d.pkgs],[332.8,d.bill_tc]]), '<hr>');
     h.push(row([[L,'Shipper:'],[302.4,'Consignee:']]));
@@ -351,16 +371,17 @@ const CONFIG_VERSION = '2026-10-23a';   // the config.js this page expects
     h.push(`<div class="c h11">${escapeHtml([`ID/EIN: ${im.id || cn.id || 'n/a'}`, email, im.phone || cn.phone].filter(Boolean).join('  '))}</div><hr>`);
     for (const it of d.items) {
       h.push(row([[L,`Part Nbr:${it.part}`],[230.5,'Marks/Nbrs:'+(it.marks?' '+it.marks:'')],[328.8,`C/T MFR:${it.mfr}`],[413.7,'Net Wgt:'],[474.8,it.net_wgt],[511,it.wgt_unit]]));
-      h.push(row([[L,`HS Code: ${it.hs}`],[185.5,`Unit Qty: ${it.qty}`],[252.2,it.uom],[307.2,'Unit Value:'],[402.6,`Commodity Value: ${it.commodity_value}`]]));
+      h.push(row([[L,`HS Code: ${it.hs}`],...ArmodiloCI.qtySegs(it),[307.2,'Unit Value:'],[402.6,`Commodity Value: ${it.commodity_value}`]]));
       h.push(row([[302.4,it.unit_value]]), row([[L,`Desc: ${it.desc}`]]), '<hr>');
     }
     (d.notes || []).forEach(n => h.push(row([[L, n]]), '<hr>'));
-    h.push(row([[194.9,'Total Shipment'],[297.1,d.total_weight],[363.8,'Total Commodity'],[468.8,d.total_commodity]]));
+    h.push(row([[194.9,'Total Shipment'],[297.1,d.total_weight],[363.8,'Total Commodity'],[R,d.total_commodity,'right']]));
     h.push(row([[230.4,'Weight:'],[308.5,'lbs'],[410.2,'Value:']]));
-    [['Terms of Sale:',d.terms],['Freight:',d.freight],['Insurance:',d.insurance],['Others:',d.others]].forEach(([a,b]) => h.push(row([[410,a,'right'],[482.4,b]])));
-    h.push(row([[410,'Total Invoice Value:','right'],[452,(d.currency==='USD'?'US$':'')+d.total_invoice]]));
+    [['Terms of Sale:',d.terms],['Freight:',d.freight],['Insurance:',d.insurance],['Others:',d.others]].forEach(([a,b]) => h.push(row([[410,a,'right'],[R,b,'right']])));
+    h.push(row([[410,'Total Invoice Value:','right'],[R,(d.currency==='USD'?'US$':'')+d.total_invoice,'right']]));
     h.push('<div class="r"></div>', row([[L,'Comments:']]), ...d.comments.map(c => row([[L,c]])));
-    h.push(row([[L,'Tracking Numbers:'],[108,d.tracking.join(', ')]]), '<div class="r"></div>');
+    if (d.tracking.length) h.push(row([[L,'Tracking Numbers:'],[108,d.tracking.join(', ')]]));
+    h.push('<div class="r"></div>');
     h.push(row([[L,'I declare all information in this invoice to be true and correct.']]));
     h.push(`<div style="position:relative;display:flex;align-items:flex-end;height:34px;white-space:nowrap">Signature of shipper:&nbsp;<img alt="Signature" src="data:image/png;base64,${SIG_B64}" style="width:54px;height:30px;margin-bottom:-4px">&nbsp;SHIPPING@ARMODILO.COM<span style="position:absolute;bottom:0;left:${348-L}px">${escapeHtml(d.sig_date)}</span></div>`);
     const P1 = ArmodiloCI.p1Pages(d), NP = ArmodiloCI.totalPages(d, CONFIG);

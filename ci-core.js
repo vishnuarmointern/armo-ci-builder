@@ -3,6 +3,14 @@
 (function (root) {
   const L = 14.4;            // left margin (pt)
   const LH = 13.5;           // body line height (pt)
+  const AMT_R = 501.9;       // right edge of the money column in the totals block (FedEx right-aligns these)
+  const AWB_X = 444.6;       // "Air Waybill Nbr." column on the header rows (only when FedEx has one)
+  // ACI number from the file name, e.g. "527617844816 - Douglas County Libraries.txt" -> 527617844816
+  function aciFromName(name) { const m = String(name || '').replace(/^.*[\\/]/, '').match(/(?<!\d)\d{9,15}(?!\d)/); return m ? m[0] : ''; }
+  // value printed under "Air Waybill Nbr." ('' = column not printed)
+  // "Unit Qty: 10.00" is too wide for the EA column, so from 10 up the unit follows the number instead
+  const qtySegs = it => String(it.qty).length > 4 ? [[185.5, `Unit Qty: ${it.qty} ${it.uom}`]] : [[185.5, `Unit Qty: ${it.qty}`], [252.2, it.uom]];
+  const awbOut = (d, aci) => d.has_awb ? (d.awb_out != null ? d.awb_out : aci) : '';
   const SIG = { w: 54, h: 30 };
 
   // ---------- parsing ----------
@@ -70,8 +78,15 @@
     let w = ls[i + 1].text.split(/\s+/);
     [d.purpose, d.currency, d.ult_dest] = w;
     i = idx(/^Export Dt/);
+    // read by column, so a multi-word C.I. Reference ("Tablet PC Display Enclosure") stays in one piece
+    // Pkgs is the first whole number after the reference; everything between the date and it is the reference
+    // (.txt columns are already separated by wide gaps, so those are used as they are)
+    const ew = ls[i + 1].words.map(x => x.text);
     w = ls[i + 1].text.split(/\s+/);
-    [d.export_date, d.ci_ref, d.pkgs, d.bill_tc] = w;
+    const pk = w.findIndex((x, k) => k > 1 && /^\d+$/.test(x));
+    if ((ew.length === 3 || ew.length === 4) && /^\d+$/.test(ew[2])) [d.export_date, d.ci_ref, d.pkgs, d.bill_tc] = ew;
+    else if (pk > 1) [d.export_date, d.ci_ref, d.pkgs, d.bill_tc] = [w[0], w.slice(1, pk).join(' '), w[pk], w.slice(pk + 1).join(' ')];
+    else [d.export_date, d.ci_ref, d.pkgs, d.bill_tc] = w;
     const nxt = ls[i + 2].text.trim();
     d.pkg_type = /^[A-Z]+$/.test(nxt) ? nxt : '';
     const block = re => { const s = idx(re) + 1; let e = s; while (e < ls.length && !isRule(ls[e])) e++; return ls.slice(s, e); };
@@ -109,12 +124,15 @@
     d.insurance = g(/Insurance:\s*\n?([\d.,]+)/);
     d.others = g(/Others:\s*\n?([\d.,]+)/);
     d.total_invoice = g(/Total Invoice Value:\s*\n?([\d.,]+)/);
-    d.comments = (g(/Comments:\s*\n([\s\S]*?)Tracking Numbers/).match(/^\d\).*$/gm) || []);
+    // comments run until the tracking line, the declaration or the signature (newer FedEx files have no tracking line)
+    d.comments = (g(/Comments:\s*\n([\s\S]*?)(?:Tracking Numbers|I declare|Signature of shipper|$)/).match(/^\d\).*$/gm) || []);
     d.tracking = g(/Tracking Numbers:\s*([\d ,]+)/).split(/[\s,]+/).filter(Boolean);
     d.sig_date = g(/Signature of shipper:.*?(\d{1,2}\/\d{1,2}\/\d{4})/);
     // "Air Waybill Nbr" (when FedEx includes it) is the ACI number. Value on the same line or the line below.
+    // d.has_awb: the file has an "Air Waybill Nbr" heading (even if FedEx left X's under it) -> it's printed on the invoice
     d.awb = '';
     const ai = ls.findIndex(l => /air\s*way\s*bill/i.test(l.text));
+    d.has_awb = ai >= 0;
     if (ai >= 0) {
       const after = ls[ai].text.replace(/^.*?air\s*way\s*bill\s*(?:nbr|no|number|#)?\.?\s*:?/i, '');
       const pick = t => { const m = String(t).match(/\b\d{4}[ -]\d{4}[ -]\d{4}\b|\b\d{9,15}\b/); return m ? m[0].replace(/[\s-]/g, '') : ''; };
@@ -428,8 +446,9 @@
     P.push(para([], { center: `ACI-${aci}`, b: true, sz: 12, line: 16.8 }));
     P.push(para([], { center: 'Commercial Invoice', b: true, sz: 12, line: 16.8 }));
     P.push(para([], { center: `Please see Page ${metalPage(d)} for Steel/Aluminum Content Breakdown`, b: true, sz: 11, color: RED, line: 15.4 }));
-    P.push(para([[L, 'Invoice Number'], [95.5, 'Purpose of Shipment'], [302.7, 'Curr'], [355.5, 'Ult Dest.']]));
-    P.push(para([[122.4, d.purpose], [300.7, d.currency], [355.1, d.ult_dest]]));
+    const awb = awbOut(d, aci);
+    P.push(para([[L, 'Invoice Number'], [95.5, 'Purpose of Shipment'], [302.7, 'Curr'], [355.5, 'Ult Dest.'], ...(d.has_awb ? [[AWB_X, 'Air Waybill Nbr.']] : [])]));
+    P.push(para([[122.4, d.purpose], [300.7, d.currency], [355.1, d.ult_dest], ...(awb ? [[AWB_X, awb]] : [])]));
     P.push(para([[L, 'Export Dt'], [81.1, 'C.I. References'], [275.5, 'Pkgs'], [333.8, 'Bill T/C']]));
     P.push(para([[L, d.export_date], [86.6, d.ci_ref], [222.8, d.pkg_type], [291.1, d.pkgs], [332.8, d.bill_tc]]));
     hr();
@@ -453,21 +472,21 @@
     hr();
     for (const it of d.items) {
       P.push(para([[L, `Part Nbr:${it.part}`], [230.5, 'Marks/Nbrs:' + (it.marks ? ' ' + it.marks : '')], [328.8, `C/T MFR:${it.mfr}`], [413.7, 'Net Wgt:'], [474.8, it.net_wgt], [511.0, it.wgt_unit]]));
-      P.push(para([[L, `HS Code: ${it.hs}`], [185.5, `Unit Qty: ${it.qty}`], [252.2, it.uom], [307.2, 'Unit Value:'], [402.6, `Commodity Value: ${it.commodity_value}`]]));
+      P.push(para([[L, `HS Code: ${it.hs}`], ...qtySegs(it), [307.2, 'Unit Value:'], [402.6, `Commodity Value: ${it.commodity_value}`]]));
       P.push(para([[302.4, it.unit_value]]));
       P.push(para([[L, `Desc: ${it.desc}`]]));
       hr();
     }
     (d.notes || []).forEach(n => { P.push(para([[L, n]])); hr(); });
-    P.push(para([[194.9, 'Total Shipment'], [297.1, d.total_weight], [363.8, 'Total Commodity'], [468.8, d.total_commodity]]));
+    P.push(para([[194.9, 'Total Shipment'], [297.1, d.total_weight], [363.8, 'Total Commodity'], [AMT_R, d.total_commodity, 'right']]));
     P.push(para([[230.4, 'Weight:'], [308.5, 'lbs'], [410.2, 'Value:']]));
     for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]])
-      P.push(para([[410, lab, 'right'], [482.4, val]]));
-    P.push(para([[410, 'Total Invoice Value:', 'right'], [452, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice]]));
+      P.push(para([[410, lab, 'right'], [AMT_R, val, 'right']]));
+    P.push(para([[410, 'Total Invoice Value:', 'right'], [AMT_R, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice, 'right']]));
     if (!(d.notes || []).length) blank();
     P.push(para([[L, 'Comments:']]));
     d.comments.forEach(c => P.push(para([[L, c]])));
-    P.push(para([[L, 'Tracking Numbers:'], [108, d.tracking.join(', ')]]));
+    if (d.tracking.length) P.push(para([[L, 'Tracking Numbers:'], [108, d.tracking.join(', ')]]));
     blank();
     P.push(para([[L, 'I declare all information in this invoice to be true and correct.']]));
     // Signature line: "Signature of shipper:" [signature] "SHIPPING@ARMODILO.COM" [tab] date
@@ -557,8 +576,9 @@
     doc.addImage('data:image/png;base64,' + logoB64, 'PNG', 225, 16, 161, 36.6);
     tc(60, `ACI-${aci}`); tc(76.5, 'Commercial Invoice');
     y = 107.6;
-    t(L, y, 'Invoice Number'); t(95.5, y, 'Purpose of Shipment'); t(302.7, y, 'Curr'); t(355.5, y, 'Ult Dest.');
-    y += LH; t(122.4, y, d.purpose); t(300.7, y, d.currency); t(355.1, y, d.ult_dest);
+    const awb = awbOut(d, aci);
+    t(L, y, 'Invoice Number'); t(95.5, y, 'Purpose of Shipment'); t(302.7, y, 'Curr'); t(355.5, y, 'Ult Dest.'); if (d.has_awb) t(AWB_X, y, 'Air Waybill Nbr.');
+    y += LH; t(122.4, y, d.purpose); t(300.7, y, d.currency); t(355.1, y, d.ult_dest); if (awb) t(AWB_X, y, awb);
     y += LH; t(L, y, 'Export Dt'); t(81.1, y, 'C.I. References'); t(275.5, y, 'Pkgs'); t(333.8, y, 'Bill T/C');
     y += LH; t(L, y, d.export_date); t(86.6, y, d.ci_ref); t(222.8, y, d.pkg_type); t(291.1, y, d.pkgs); t(332.8, y, d.bill_tc);
     y += LH; rule(y); y += LH;
@@ -577,21 +597,21 @@
     for (const it of d.items) {
       room(LH * 5);
       t(L, y, `Part Nbr:${it.part}`); t(230.5, y, 'Marks/Nbrs:' + (it.marks ? ' ' + it.marks : '')); t(328.8, y, `C/T MFR:${it.mfr}`); t(413.7, y, 'Net Wgt:'); t(474.8, y, it.net_wgt); t(511, y, it.wgt_unit);
-      y += LH; t(L, y, `HS Code: ${it.hs}`); t(185.5, y, `Unit Qty: ${it.qty}`); t(252.2, y, it.uom); t(307.2, y, 'Unit Value:'); t(402.6, y, `Commodity Value: ${it.commodity_value}`);
+      y += LH; t(L, y, `HS Code: ${it.hs}`); qtySegs(it).forEach(([x, v]) => t(x, y, v)); t(307.2, y, 'Unit Value:'); t(402.6, y, `Commodity Value: ${it.commodity_value}`);
       y += LH; t(302.4, y, it.unit_value);
       y += LH; t(L, y, `Desc: ${it.desc}`);
       y += LH; rule(y); y += LH;
     }
     (d.notes || []).forEach(n => { room(LH * 2); t(L, y, n); y += LH; rule(y); y += LH; });
     room(LH * 8);
-    t(194.9, y, 'Total Shipment'); t(297.1, y, d.total_weight); t(363.8, y, 'Total Commodity'); t(468.8, y, d.total_commodity);
+    t(194.9, y, 'Total Shipment'); t(297.1, y, d.total_weight); t(363.8, y, 'Total Commodity'); t(AMT_R, y, d.total_commodity, { right: true });
     y += LH; t(230.4, y, 'Weight:'); t(308.5, y, 'lbs'); t(410.2, y, 'Value:');
-    for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]]) { y += LH; t(410, y, lab, { right: true }); t(482.4, y, val); }
-    y += LH; t(410, y, 'Total Invoice Value:', { right: true }); t(452, y, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice);
+    for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]]) { y += LH; t(410, y, lab, { right: true }); t(AMT_R, y, val, { right: true }); }
+    y += LH; t(410, y, 'Total Invoice Value:', { right: true }); t(AMT_R, y, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice, { right: true });
     y += (d.notes || []).length ? LH : LH * 2; room(LH * (d.comments.length + 7) + 17);
     t(L, y, 'Comments:');
     d.comments.forEach(c => { y += LH; t(L, y, c); });
-    y += LH; t(L, y, 'Tracking Numbers:'); t(108, y, d.tracking.join(', '));
+    if (d.tracking.length) { y += LH; t(L, y, 'Tracking Numbers:'); t(108, y, d.tracking.join(', ')); }
     y += LH * 2; t(L, y, 'I declare all information in this invoice to be true and correct.');
     y += LH + 17;
     const lab = 'Signature of shipper: ', lw = width(lab);
@@ -655,6 +675,6 @@
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, p1Pages, totalPages, buildPdf, parseBreakdown, mergeBreakdown, fitImg };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, p1Pages, totalPages, buildPdf, parseBreakdown, aciFromName, AMT_R, AWB_X, qtySegs, mergeBreakdown, fitImg };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);
