@@ -23,7 +23,7 @@
      item        - defaults used when you add this product as an extra line
                    (part number, HS code, unit value in US$, description) */
 window.CONFIG = {
-  "version": "2026-11-09a",
+  "version": "2026-11-11a",
   "breakdown_url": "https://script.google.com/macros/s/AKfycbxeHnpHqSgH2aBnbZHycKP3XvCLJLLZuPnT7OODBty5QT4xEF5awCECXbJ2ypnV8ACj/exec",
   "shipper": {
     "lines": [
@@ -36,6 +36,12 @@ window.CONFIG = {
     "id_ein": "80882 8297 RT0001"
   },
   "broker_extra_line": "FedEx Trade Network Acct#:4869598",
+  // Used when the FedEx file's Comments 1)-3) are blank (they can be changed on the page before downloading)
+  "default_comments": [
+    "*** Blanket USMCA on file under FTN ACC # 4869598 ***",
+    "I hereby certify that the goods covered by this shipment qualifies as an originating good",
+    "for the purposes of preferential tariff treatment under USMCS/T-MEC/CUSMA"
+  ],
   "customers": {
     "COTALITY": {
       "email": "rhenz@cotality.com",

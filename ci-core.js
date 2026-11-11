@@ -10,6 +10,14 @@
   // value printed under "Air Waybill Nbr." ('' = column not printed)
   // "Unit Qty: 10.00" is too wide for the EA column, so from 10 up the unit follows the number instead
   const qtySegs = it => String(it.qty).length > 4 ? [[185.5, `Unit Qty: ${it.qty} ${it.uom}`]] : [[185.5, `Unit Qty: ${it.qty}`], [252.2, it.uom]];
+  // comment lines without their "1)" numbers; true when FedEx left them all blank
+  const commentText = d => (d.comments || []).map(c => c.replace(/^\d\)\s*/, ''));
+  const commentsBlank = d => !commentText(d).some(t => t.trim());
+  // comments to print: FedEx's, or the standard ones from config.js when FedEx left them blank (unless edited on the page)
+  function commentsFor(d, cfg) {
+    if (d.comments_edited || !commentsBlank(d) || !(cfg.default_comments || []).length) return d.comments || [];
+    return cfg.default_comments.map((t, i) => `${i + 1})${t}`);
+  }
   const awbOut = (d, aci) => d.has_awb ? (d.awb_out != null ? d.awb_out : aci) : '';
   const SIG = { w: 54, h: 30 };
 
@@ -202,6 +210,17 @@
     return { key: null, options: [], reason: 'no saved metal content for this part number' };
   }
   // the saved metal content for a line: a user's choice (it.metal_key) wins, '' means none
+  // shipments of only Tablet Fit Kits have no metal: page 2 is "Product Information" and both headings are black
+  const FIT_KIT = 'TABLETFITKIT';
+  function fitKitOnly(d, cfg) {
+    const keyOf = p => Object.keys(cfg.parts || {}).find(k => cfg.parts[k] === p) || '';
+    return d.items.length > 0 && d.items.every(it => { const p = partFor(cfg, it); return p && keyOf(p).toUpperCase().replace(/[^A-Z0-9]/g, '') === FIT_KIT; });
+  }
+  function headings(d, cfg) {
+    const fk = fitKitOnly(d, cfg);
+    return { fitKit: fk, p1: `Please see Page ${metalPage(d)} for ${fk ? 'Product Information' : 'Steel/Aluminum Content Breakdown'}`,
+             p2: fk ? 'Product Information' : 'Metal Content', black: fk };
+  }
   function partFor(cfg, it) {
     if (it.metal_key !== undefined) return it.metal_key ? cfg.parts[it.metal_key] || null : null;
     const m = matchPart(cfg, it.part, it.desc);
@@ -445,7 +464,8 @@
     P.push(para([], { center: '', auto: true, raw: pic('rLogo', 161, 36.7, 'Armodilo logo') }));
     P.push(para([], { center: `ACI-${aci}`, b: true, sz: 12, line: 16.8 }));
     P.push(para([], { center: 'Commercial Invoice', b: true, sz: 12, line: 16.8 }));
-    P.push(para([], { center: `Please see Page ${metalPage(d)} for Steel/Aluminum Content Breakdown`, b: true, sz: 11, color: RED, line: 15.4 }));
+    const HD = headings(d, cfg);
+    P.push(para([], { center: HD.p1, b: true, sz: 11, color: HD.black ? '000000' : RED, line: 15.4 }));
     const awb = awbOut(d, aci);
     P.push(para([[L, 'Invoice Number'], [95.5, 'Purpose of Shipment'], [302.7, 'Curr'], [355.5, 'Ult Dest.'], ...(d.has_awb ? [[AWB_X, 'Air Waybill Nbr.']] : [])]));
     P.push(para([[122.4, d.purpose], [300.7, d.currency], [355.1, d.ult_dest], ...(awb ? [[AWB_X, awb]] : [])]));
@@ -485,7 +505,7 @@
     P.push(para([[410, 'Total Invoice Value:', 'right'], [AMT_R, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice, 'right']]));
     if (!(d.notes || []).length) blank();
     P.push(para([[L, 'Comments:']]));
-    d.comments.forEach(c => P.push(para([[L, c]])));
+    commentsFor(d, cfg).forEach(c => P.push(para([[L, c]])));
     if (d.tracking.length) P.push(para([[L, 'Tracking Numbers:'], [108, d.tracking.join(', ')]]));
     blank();
     P.push(para([[L, 'I declare all information in this invoice to be true and correct.']]));
@@ -497,7 +517,7 @@
     blank(); hr('single'); blank(); P.push(para([[L, `Page ${P1} of ${NP}`]]));
 
     // page 2
-    P.push(para([], { center: 'Metal Content', b: true, sz: 12, color: RED, line: 16.8, pageBreak: true }));
+    P.push(para([], { center: HD.p2, b: true, sz: 12, color: HD.black ? '000000' : RED, line: 16.8, pageBreak: true }));
     blank();
     d.items.forEach((it, n) => {
       const p = partFor(cfg, it);
@@ -608,9 +628,9 @@
     y += LH; t(230.4, y, 'Weight:'); t(308.5, y, 'lbs'); t(410.2, y, 'Value:');
     for (const [lab, val] of [['Terms of Sale:', d.terms], ['Freight:', d.freight], ['Insurance:', d.insurance], ['Others:', d.others]]) { y += LH; t(410, y, lab, { right: true }); t(AMT_R, y, val, { right: true }); }
     y += LH; t(410, y, 'Total Invoice Value:', { right: true }); t(AMT_R, y, d.currency === 'USD' ? `US$${d.total_invoice}` : d.total_invoice, { right: true });
-    y += (d.notes || []).length ? LH : LH * 2; room(LH * (d.comments.length + 7) + 17);
+    y += (d.notes || []).length ? LH : LH * 2; room(LH * (commentsFor(d, cfg).length + 7) + 17);
     t(L, y, 'Comments:');
-    d.comments.forEach(c => { y += LH; t(L, y, c); });
+    commentsFor(d, cfg).forEach(c => { y += LH; t(L, y, c); });
     if (d.tracking.length) { y += LH; t(L, y, 'Tracking Numbers:'); t(108, y, d.tracking.join(', ')); }
     y += LH * 2; t(L, y, 'I declare all information in this invoice to be true and correct.');
     y += LH + 17;
@@ -623,7 +643,8 @@
 
     // metal content always starts on a new page
     doc.addPage(); const metalPage = doc.getNumberOfPages();
-    tc(16.5, 'Metal Content', { color: RED });
+    const HD = headings(d, cfg);
+    tc(16.5, HD.p2, { color: HD.black ? BLACK : RED });
     y = 49.1;
     d.items.forEach((it, n) => {
       const p = partFor(cfg, it);
@@ -657,7 +678,7 @@
     t(L, y, `Page ${total} of ${total}`);
     doc.setPage(p1Page); t(L, p1LabelY, `Page ${p1Page} of ${total}`);
     doc.setPage(1);
-    tc(92.8, `Please see Page ${metalPage} for Steel/Aluminum Content Breakdown`, { sz: 11, color: RED });
+    tc(92.8, `Please see Page ${metalPage} for ${HD.fitKit ? 'Product Information' : 'Steel/Aluminum Content Breakdown'}`, { sz: 11, color: HD.black ? BLACK : RED });
     return doc.output('blob');
   }
 
@@ -675,6 +696,6 @@
     return w;
   }
 
-  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, p1Pages, totalPages, buildPdf, parseBreakdown, aciFromName, AMT_R, AWB_X, qtySegs, mergeBreakdown, fitImg };
+  root.ArmodiloCI = { extractLines, extractTextLines, parse, buildDocx, warnings, findPart, matchPart, partFor, componentRows, componentFields, VALUE_X, newLine, fillLine, withTotals, metalPage, p1Pages, totalPages, buildPdf, parseBreakdown, aciFromName, AMT_R, AWB_X, qtySegs, commentText, commentsBlank, commentsFor, fitKitOnly, headings, mergeBreakdown, fitImg };
   if (typeof module !== 'undefined') module.exports = root.ArmodiloCI;
 })(typeof window !== 'undefined' ? window : globalThis);
